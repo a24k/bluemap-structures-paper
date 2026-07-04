@@ -4,10 +4,12 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * The 20 supported structure layers. Spacing/separation values mirror vanilla 1.21
- * {@code StructureSet} constants (cross-checked against mc-bluemap-structures, MIT —
- * see THIRD_PARTY_NOTICES.md). Zoom tiers: 5000 = always visible, 1000 = dense layer,
- * only shown zoomed-in.
+ * The 20 supported structure layers. Spacing/separation values mirror vanilla
+ * {@code StructureSet} constants as of the 1.21 line (cross-checked against
+ * mc-bluemap-structures, MIT — see THIRD_PARTY_NOTICES.md); no worldgen spacing
+ * changes are known in 26.x, but re-verify here if a Minecraft update touches
+ * structure placement. Zoom tiers: 5000 = always visible, 1000 = dense layer, only
+ * shown zoomed-in.
  */
 public final class StructureCatalog {
 

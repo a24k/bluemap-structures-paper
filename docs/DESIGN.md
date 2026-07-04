@@ -4,7 +4,7 @@
 
 ```
 bluemap-structures-paper/
-├── core/     Pure Java 21. No Bukkit/Paper/BlueMap types. Unit-tested (JUnit 5).
+├── core/     Pure Java (`--release 21`). No Bukkit/Paper/BlueMap types. Unit-tested (JUnit 5).
 └── plugin/   Paper plugin. compileOnly paper-api + bluemap-api. Thin adapter over core.
 ```
 
@@ -174,7 +174,7 @@ MarkerPublisher
   (repo.bluecolored.de; requires JVM 25+, hence the Java 25 module),
   `com.google.code.gson` (provided by Paper at runtime). Jar task copies core classes in
   (no shading of external libs needed).
-- GitHub Actions (`.github/workflows/ci.yml`): JDK 21 + `./gradlew build` on push/PR.
+- GitHub Actions (`.github/workflows/ci.yml`): JDK 25 + `./gradlew build` on push/PR.
   This is where `:plugin` compilation is actually verified — treat CI as part of the
   red/green loop for the plugin module.
 
