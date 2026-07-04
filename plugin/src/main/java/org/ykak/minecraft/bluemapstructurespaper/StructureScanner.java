@@ -89,9 +89,22 @@ final class StructureScanner extends BukkitRunnable {
   private void locate(PendingLocate task) {
     SampleQuery sample = task.sample();
     Location origin = new Location(world, sample.blockX(), 0, sample.blockZ());
-    StructureSearchResult result =
-        world.locateNearestStructure(
-            origin, task.query().structure(), sample.radiusChunks(), true);
+    StructureSearchResult result;
+    try {
+      result =
+          world.locateNearestStructure(
+              origin, task.query().structure(), sample.radiusChunks(), true);
+    } catch (RuntimeException e) {
+      // One bad query must not kill the scan task: an uncaught exception would cancel
+      // the scheduled runnable and silently leave this world without markers.
+      plugin
+          .getLogger()
+          .warning(
+              "locateNearestStructure failed for " + task.query().structureKey() + " at ("
+                  + sample.blockX() + ", " + sample.blockZ() + ") in '" + world.getName()
+                  + "': " + e);
+      return;
+    }
     if (result == null) {
       return;
     }
