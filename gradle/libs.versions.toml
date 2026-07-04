@@ -1,0 +1,17 @@
+[versions]
+# Single source of truth for the targeted Minecraft version (see docs/REQUIREMENTS.md §2).
+# 26.1.2.build.+ tracks the latest (stable) paper-api build for Minecraft 26.1.2.
+paper-api = "26.1.2.build.+"
+# 2.8.0 requires JVM 25+, satisfied since the :plugin module targets Java 25 (MC 26.x baseline)
+bluemap-api = "2.8.0"
+gson = "2.14.0"
+# stay on the JUnit 5 line (6.x is a separate major); bump within 5.x
+junit = "5.14.4"
+
+[libraries]
+paper-api = { module = "io.papermc.paper:paper-api", version.ref = "paper-api" }
+bluemap-api = { module = "de.bluecolored:bluemap-api", version.ref = "bluemap-api" }
+gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }

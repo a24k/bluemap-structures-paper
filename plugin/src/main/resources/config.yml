@@ -1,0 +1,37 @@
+# BlueMapStructuresPaper configuration
+# Structure positions are computed directly from the world seed (plus a biome check)
+# in milliseconds at startup — there is no on-disk cache. Changes to this file apply
+# on the next server restart (or /reload of this plugin), since the scan runs once
+# per BlueMap enable.
+
+# Half-side, in blocks, of the square around world origin (0,0) that is scanned for
+# structures.
+radius-blocks: 5000
+
+# Per-layer toggles. Each enabled layer becomes its own toggleable marker layer in the
+# BlueMap sidebar.
+layers:
+  village: true
+  desert_pyramid: true
+  jungle_temple: true
+  swamp_hut: true
+  igloo: true
+  pillager_outpost: true
+  ancient_city: true
+  trail_ruins: true
+  trial_chambers: true
+  ocean_ruin: true
+  shipwreck: true
+  ruined_portal: true
+  monument: true
+  mansion: true
+  fortress: true
+  bastion: true
+  ruined_portal_nether: true
+  end_city: true
+  # Buried treasure spawns on a per-chunk grid (~0.01 probability per chunk). Scanning
+  # it is no longer a time cost — the cost is marker count: at radius 5000 this can
+  # place thousands of markers, which can slow the BlueMap web app. It stays
+  # zoom-gated when enabled; use a smaller radius if the web app feels sluggish.
+  buried_treasure: false
+  stronghold: true
