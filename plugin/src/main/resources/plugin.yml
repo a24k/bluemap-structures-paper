@@ -1,4 +1,4 @@
-name: BluemapStructuresPaper
+name: BlueMapStructuresPaper
 version: '${version}'
 main: org.ykak.minecraft.bluemapstructurespaper.BlueMapStructuresPlugin
 api-version: '26.1'

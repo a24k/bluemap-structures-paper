@@ -21,7 +21,7 @@ reimplemented on the Paper API so it runs on Paper/Purpur servers.
 | Java              | 25 (required by Minecraft 26.x). The `core` module stays at Java 21 bytecode so its tests run in sandboxed dev environments that only ship JDK 21. |
 | BlueMap           | BlueMap 5.x via `de.bluecolored:bluemap-api:2.8.0` (soft dependency — the plugin idles harmlessly when BlueMap is absent) |
 | Plugin descriptor | **[D]** legacy `plugin.yml` — `paper-plugin.yml` offers no benefit here (no loader isolation needed, BlueMap is reached via its API singleton, not classpath), while `softdepend` + `api-version` are battle-tested. |
-| Package           | **[D]** `org.ykak.minecraft.bluemapstructurespaper` — reverse-domain of the owner's `ykak.org`, grouping Minecraft projects; official plugin name **Bluemap Structures Paper**. |
+| Package           | **[D]** `org.ykak.minecraft.bluemapstructurespaper` — reverse-domain of the owner's `ykak.org`, grouping Minecraft projects; official plugin name **BlueMap Structures Paper**. |
 
 ## 3. Functional requirements
 

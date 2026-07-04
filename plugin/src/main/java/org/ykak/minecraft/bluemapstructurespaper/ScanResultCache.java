@@ -23,7 +23,7 @@ import java.util.logging.Logger;
 final class ScanResultCache {
 
   private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-  private static final Logger LOGGER = Logger.getLogger("BluemapStructuresPaper");
+  private static final Logger LOGGER = Logger.getLogger("BlueMapStructuresPaper");
 
   /** Gson-friendly file shape. */
   private static final class CacheFile {

@@ -23,5 +23,5 @@ jobs:
       - name: Upload plugin jar
         uses: actions/upload-artifact@v4
         with:
-          name: BluemapStructuresPaper
+          name: BlueMapStructuresPaper
           path: plugin/build/libs/*.jar

@@ -28,7 +28,7 @@ tasks.processResources {
 }
 
 tasks.jar {
-  archiveBaseName = "BluemapStructuresPaper"
+  archiveBaseName = "BlueMapStructuresPaper"
   // Bundle :core (the only runtime dependency) into the plugin jar.
   from({
     configurations.runtimeClasspath.get().filter { it.name.endsWith(".jar") }.map { zipTree(it) }
