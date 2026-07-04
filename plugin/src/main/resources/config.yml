@@ -1,17 +1,12 @@
 # BlueMapStructuresPaper configuration
-# Changes apply after a server restart (or /reload of this plugin).
+# Structure positions are computed directly from the world seed (plus a biome check)
+# in milliseconds at startup — there is no on-disk cache. Changes to this file apply
+# on the next server restart (or /reload of this plugin), since the scan runs once
+# per BlueMap enable.
 
 # Half-side, in blocks, of the square around world origin (0,0) that is scanned for
-# structures. Bigger radius = quadratically more locate queries on first scan.
+# structures.
 radius-blocks: 5000
-
-scan:
-  # Max milliseconds per server tick spent locating structures during the initial
-  # scan. Lower = slower scan, less TPS impact. Range 1-45.
-  budget-ms-per-tick: 20
-  # Scan results are deterministic per (seed, radius, enabled layers); cache them in
-  # plugins/BlueMapStructuresPaper/cache/ and skip re-scanning on restart.
-  cache-enabled: true
 
 # Per-layer toggles. Each enabled layer becomes its own toggleable marker layer in the
 # BlueMap sidebar.
@@ -34,8 +29,9 @@ layers:
   bastion: true
   ruined_portal_nether: true
   end_city: true
-  # Buried treasure spawns on a per-chunk grid: exhaustively enumerating it through
-  # the locate API needs ~100k queries at radius 5000. Enable only with a small
-  # radius, and expect the initial scan to take a while.
+  # Buried treasure spawns on a per-chunk grid (~0.01 probability per chunk). Scanning
+  # it is no longer a time cost — the cost is marker count: at radius 5000 this can
+  # place thousands of markers, which can slow the BlueMap web app. It stays
+  # zoom-gated when enabled; use a smaller radius if the web app feels sluggish.
   buried_treasure: false
   stronghold: true
