@@ -4,7 +4,10 @@
 
 - Source: https://github.com/dannysmith/mc-bluemap-structures
 - Author: Danny Smith (`dannysmith`)
-- License: MIT (declared in the project's `fabric.mod.json`)
+- License: MIT — declared in the project's `fabric.mod.json`; the repository contains
+  no LICENSE file, and the original provenance of the icon artwork is not documented
+  upstream. Replacing the bundled icons with runtime-fetched official client assets is
+  tracked in issue #2.
 
 Reused in this project:
 
