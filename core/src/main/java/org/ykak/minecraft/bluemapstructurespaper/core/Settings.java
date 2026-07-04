@@ -13,8 +13,6 @@ import java.util.Map;
  */
 public record Settings(
     int radiusBlocks,
-    int budgetMsPerTick,
-    boolean cacheEnabled,
     Map<String, Boolean> layerEnabled,
     List<String> enabledLayerIds,
     List<String> warnings) {
@@ -22,9 +20,6 @@ public record Settings(
   public static final int DEFAULT_RADIUS_BLOCKS = 5000;
   public static final int MIN_RADIUS_BLOCKS = 256;
   public static final int MAX_RADIUS_BLOCKS = 1_000_000;
-  public static final int DEFAULT_BUDGET_MS = 20;
-  public static final int MIN_BUDGET_MS = 1;
-  public static final int MAX_BUDGET_MS = 45;
 
   public boolean isLayerEnabled(String layerId) {
     return layerEnabled.getOrDefault(layerId, false);
@@ -41,18 +36,6 @@ public record Settings(
             MIN_RADIUS_BLOCKS,
             MAX_RADIUS_BLOCKS,
             warnings);
-
-    Map<String, ?> scan = readSection(config.get("scan"), "scan", warnings);
-    int budget =
-        readInt(
-            scan.get("budget-ms-per-tick"),
-            "scan.budget-ms-per-tick",
-            DEFAULT_BUDGET_MS,
-            MIN_BUDGET_MS,
-            MAX_BUDGET_MS,
-            warnings);
-    boolean cache =
-        readBoolean(scan.get("cache-enabled"), "scan.cache-enabled", true, warnings);
 
     Map<String, ?> layerSection = readSection(config.get("layers"), "layers", warnings);
     Map<String, Boolean> layerEnabled = new LinkedHashMap<>();
@@ -75,8 +58,6 @@ public record Settings(
 
     return new Settings(
         radius,
-        budget,
-        cache,
         Map.copyOf(layerEnabled),
         List.copyOf(enabledIds),
         List.copyOf(warnings));

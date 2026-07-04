@@ -14,8 +14,6 @@ class SettingsTest {
     Settings settings = Settings.fromMap(Map.of(), StructureCatalog.layers());
 
     assertEquals(5000, settings.radiusBlocks());
-    assertEquals(20, settings.budgetMsPerTick());
-    assertTrue(settings.cacheEnabled());
     assertTrue(settings.isLayerEnabled("village"));
     assertFalse(settings.isLayerEnabled("buried_treasure"), "opt-in layer");
     assertTrue(settings.warnings().isEmpty());
@@ -27,13 +25,10 @@ class SettingsTest {
         Settings.fromMap(
             Map.of(
                 "radius-blocks", 10000,
-                "scan", Map.of("budget-ms-per-tick", 5, "cache-enabled", false),
                 "layers", Map.of("village", false, "buried_treasure", true)),
             StructureCatalog.layers());
 
     assertEquals(10000, settings.radiusBlocks());
-    assertEquals(5, settings.budgetMsPerTick());
-    assertFalse(settings.cacheEnabled());
     assertFalse(settings.isLayerEnabled("village"));
     assertTrue(settings.isLayerEnabled("buried_treasure"));
     assertTrue(settings.isLayerEnabled("mansion"), "untouched layers keep their default");
@@ -41,31 +36,21 @@ class SettingsTest {
 
   @Test
   void outOfRangeNumbersAreClampedWithWarnings() {
-    Settings low =
-        Settings.fromMap(
-            Map.of("radius-blocks", 50, "scan", Map.of("budget-ms-per-tick", 0)),
-            StructureCatalog.layers());
+    Settings low = Settings.fromMap(Map.of("radius-blocks", 50), StructureCatalog.layers());
     assertEquals(256, low.radiusBlocks());
-    assertEquals(1, low.budgetMsPerTick());
-    assertEquals(2, low.warnings().size());
+    assertEquals(1, low.warnings().size());
 
     Settings high =
-        Settings.fromMap(
-            Map.of("radius-blocks", 99_999_999, "scan", Map.of("budget-ms-per-tick", 500)),
-            StructureCatalog.layers());
+        Settings.fromMap(Map.of("radius-blocks", 99_999_999), StructureCatalog.layers());
     assertEquals(1_000_000, high.radiusBlocks());
-    assertEquals(45, high.budgetMsPerTick());
   }
 
   @Test
   void malformedValuesFallBackToDefaultsWithWarnings() {
     Settings settings =
-        Settings.fromMap(
-            Map.of("radius-blocks", "very far", "scan", "not a section"),
-            StructureCatalog.layers());
+        Settings.fromMap(Map.of("radius-blocks", "very far"), StructureCatalog.layers());
 
     assertEquals(5000, settings.radiusBlocks());
-    assertEquals(20, settings.budgetMsPerTick());
     assertFalse(settings.warnings().isEmpty());
   }
 

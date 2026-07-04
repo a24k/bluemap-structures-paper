@@ -84,27 +84,83 @@ class StructureCatalogTest {
   }
 
   @Test
-  void strongholdUsesRingsEverythingElseGrids() {
+  void placementKindsMatchExpectedStrategies() {
     for (StructureLayer layer : StructureCatalog.layers()) {
-      if (layer.id().equals("stronghold")) {
-        assertInstanceOf(Placement.ConcentricRings.class, layer.placement());
-      } else {
-        Placement.Grid grid = assertInstanceOf(Placement.Grid.class, layer.placement());
-        assertTrue(grid.spacingChunks() > 0, layer.id());
+      switch (layer.id()) {
+        case "stronghold" -> assertInstanceOf(Placement.ConcentricRings.class, layer.placement());
+        case "buried_treasure" ->
+            assertInstanceOf(Placement.PerChunkProbability.class, layer.placement());
+        case "fortress", "bastion" ->
+            assertInstanceOf(Placement.NetherComplex.class, layer.placement());
+        default -> {
+          Placement.Grid grid = assertInstanceOf(Placement.Grid.class, layer.placement());
+          assertTrue(grid.spacingChunks() > 0, layer.id());
+          assertTrue(grid.separationChunks() >= 0, layer.id());
+          assertTrue(grid.separationChunks() < grid.spacingChunks(), layer.id());
+        }
       }
     }
   }
 
   @Test
-  void gridSpacingsMatchVanillaStructureSets() {
-    assertEquals(34, gridSpacing("village"));
-    assertEquals(32, gridSpacing("desert_pyramid"));
-    assertEquals(24, gridSpacing("ancient_city"));
-    assertEquals(80, gridSpacing("mansion"));
-    assertEquals(27, gridSpacing("fortress"));
-    assertEquals(20, gridSpacing("end_city"));
-    assertEquals(40, gridSpacing("ruined_portal"));
-    assertEquals(1, gridSpacing("buried_treasure"));
+  void netherComplexRolesAreDistinctAndShareTheGrid() {
+    Placement.NetherComplex fortress =
+        (Placement.NetherComplex) StructureCatalog.byId("fortress").orElseThrow().placement();
+    Placement.NetherComplex bastion =
+        (Placement.NetherComplex) StructureCatalog.byId("bastion").orElseThrow().placement();
+    assertEquals(Placement.NetherRole.FORTRESS, fortress.role());
+    assertEquals(Placement.NetherRole.BASTION, bastion.role());
+    assertEquals(27, Placement.NetherComplex.SPACING_CHUNKS);
+    assertEquals(4, Placement.NetherComplex.SEPARATION_CHUNKS);
+    assertEquals(30084232L, Placement.NetherComplex.SALT);
+  }
+
+  @Test
+  void gridSpacingsSeparationsSaltsAndSpreadsMatchCubiomes() {
+    // cubiomes finders.c getStructureConfig: chunkRange = spacing - separation.
+    assertGrid("village", 34, 8, 10387312L, Placement.Spread.LINEAR);
+    assertGrid("desert_pyramid", 32, 8, 14357617L, Placement.Spread.LINEAR);
+    assertGrid("ancient_city", 24, 8, 20083232L, Placement.Spread.LINEAR);
+    assertGrid("mansion", 80, 20, 10387319L, Placement.Spread.TRIANGULAR);
+    assertGrid("monument", 32, 5, 10387313L, Placement.Spread.TRIANGULAR);
+    assertGrid("end_city", 20, 11, 10387313L, Placement.Spread.TRIANGULAR);
+    assertGrid("ruined_portal", 40, 15, 34222645L, Placement.Spread.LINEAR);
+    assertGrid("shipwreck", 24, 4, 165745295L, Placement.Spread.LINEAR);
+    assertGrid("trial_chambers", 34, 12, 94251327L, Placement.Spread.LINEAR);
+
+    // deliberate deviation from the reference mod (which uses the pre-1.17 config 40/15):
+    // cubiomes' 1.17+ config s_ruined_portal_n_117 is spacing 25 / separation 10.
+    assertGrid("ruined_portal_nether", 25, 10, 34222645L, Placement.Spread.LINEAR);
+  }
+
+  @Test
+  void perChunkProbabilityMatchesVanillaTreasureFormula() {
+    Placement.PerChunkProbability treasure =
+        (Placement.PerChunkProbability)
+            StructureCatalog.byId("buried_treasure").orElseThrow().placement();
+    assertEquals(10387320L, treasure.salt());
+    assertEquals(0.01, treasure.probability(), 1e-9);
+  }
+
+  @Test
+  void biomeTagIdsArePresentExceptForUnrestrictedLayers() {
+    assertEquals(
+        List.of(
+            "has_structure/village_plains",
+            "has_structure/village_desert",
+            "has_structure/village_savanna",
+            "has_structure/village_snowy",
+            "has_structure/village_taiga"),
+        StructureCatalog.byId("village").orElseThrow().biomeTagIds());
+    assertEquals(
+        List.of("has_structure/ocean_monument"),
+        StructureCatalog.byId("monument").orElseThrow().biomeTagIds());
+
+    // empty = no biome restriction
+    assertTrue(StructureCatalog.byId("ruined_portal").orElseThrow().biomeTagIds().isEmpty());
+    assertTrue(
+        StructureCatalog.byId("ruined_portal_nether").orElseThrow().biomeTagIds().isEmpty());
+    assertTrue(StructureCatalog.byId("stronghold").orElseThrow().biomeTagIds().isEmpty());
   }
 
   @Test
@@ -121,7 +177,12 @@ class StructureCatalogTest {
     assertEquals(1000, StructureCatalog.byId("ocean_ruin").orElseThrow().zoomMaxDistance());
   }
 
-  private static int gridSpacing(String id) {
-    return ((Placement.Grid) StructureCatalog.byId(id).orElseThrow().placement()).spacingChunks();
+  private static void assertGrid(
+      String id, int spacing, int separation, long salt, Placement.Spread spread) {
+    Placement.Grid grid = (Placement.Grid) StructureCatalog.byId(id).orElseThrow().placement();
+    assertEquals(spacing, grid.spacingChunks(), id + " spacing");
+    assertEquals(separation, grid.separationChunks(), id + " separation");
+    assertEquals(salt, grid.salt(), id + " salt");
+    assertEquals(spread, grid.spread(), id + " spread");
   }
 }
