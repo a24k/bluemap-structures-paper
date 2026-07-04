@@ -3,22 +3,17 @@ plugins {
 }
 
 allprojects {
-  group = "dev.a24k.bluemapstructures"
+  group = "org.ykak.minecraft.bluemapstructurespaper"
   version = "0.1.0-SNAPSHOT"
 }
 
 subprojects {
   apply(plugin = "java")
 
-  extensions.configure<JavaPluginExtension> {
-    toolchain {
-      languageVersion = JavaLanguageVersion.of(21)
-    }
-  }
-
+  // No toolchain pinning: the sandboxed dev environment only has JDK 21 (enough for
+  // :core, release 21); CI runs everything on JDK 25 (required by :plugin / MC 26.x).
   tasks.withType<JavaCompile>().configureEach {
     options.encoding = "UTF-8"
-    options.release = 21
   }
 
   tasks.withType<Test>().configureEach {

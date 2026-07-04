@@ -16,11 +16,12 @@ reimplemented on the Paper API so it runs on Paper/Purpur servers.
 | Item              | Decision                                                     |
 | ----------------- | ------------------------------------------------------------ |
 | API               | Paper API (`io.papermc.paper:paper-api`)                     |
-| Version           | **[D]** `1.21.11-R0.1-SNAPSHOT` — same Minecraft version the reference mod targets, and the most likely stable line for current Purpur. Minecraft's 2026 year-based versions (26.x) are out of scope until Purpur/BlueMap support is confirmed. |
+| Version           | **[D]** Minecraft **26.1 and later** (`api-version: '26.1'`), built against `paper-api 26.1.2.build.+` (latest stable build for 26.1.2 — the version the target homelab Purpur runs). 1.21.x and older are out of scope. |
 | Runtime           | Purpur (Paper-compatible); plain Bukkit/Spigot out of scope   |
-| Java              | 21 (required by Paper 1.20.5+)                                |
-| BlueMap           | BlueMap 5.x via `de.bluecolored:bluemap-api:2.7.7` (soft dependency — the plugin idles harmlessly when BlueMap is absent). 2.8.0 requires JVM 25+, incompatible with the Java 21 toolchain. |
+| Java              | 25 (required by Minecraft 26.x). The `core` module stays at Java 21 bytecode so its tests run in sandboxed dev environments that only ship JDK 21. |
+| BlueMap           | BlueMap 5.x via `de.bluecolored:bluemap-api:2.8.0` (soft dependency — the plugin idles harmlessly when BlueMap is absent) |
 | Plugin descriptor | **[D]** legacy `plugin.yml` — `paper-plugin.yml` offers no benefit here (no loader isolation needed, BlueMap is reached via its API singleton, not classpath), while `softdepend` + `api-version` are battle-tested. |
+| Package           | **[D]** `org.ykak.minecraft.bluemapstructurespaper` — reverse-domain of the owner's `ykak.org`, grouping Minecraft projects; official plugin name **Bluemap Structures Paper**. |
 
 ## 3. Functional requirements
 
@@ -117,7 +118,7 @@ key matches. Deleting the cache or changing config triggers a re-scan.
 - Spawn-centered or multi-center search areas.
 - Biome-derived filtering beyond what `locateNearestStructure` already does (it is
   biome-exact — better than Chunkbase-style prediction).
-- Minecraft 26.x support (revisit when Purpur lands there).
+- Minecraft 1.21.x and older (the plugin targets the 26.x line onward).
 
 ## 6. Open questions carried into implementation
 

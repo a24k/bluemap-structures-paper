@@ -1,4 +1,4 @@
-# bluemap-structures-paper
+# Bluemap Structures Paper
 
 Chunkbase-style, seed-derived structure markers for [BlueMap](https://bluemap.bluecolored.de/),
 as a **Paper/Purpur plugin**. Villages, strongholds, ocean monuments and 17 other
@@ -27,20 +27,21 @@ A Paper-API reimplementation of the Fabric mod
 
 ## Requirements
 
-- Paper or Purpur, Minecraft **1.21.11** (`api-version: 1.21`)
-- Java 21
+- Paper or Purpur, Minecraft **26.1 or later** (`api-version: '26.1'`; built against
+  paper-api 26.1.2)
+- Java 25
 - [BlueMap](https://modrinth.com/plugin/bluemap) 5.x (soft dependency — the plugin
   idles when BlueMap is absent)
 
 ## Install
 
-1. Drop `BlueMapStructuresPaper-x.y.z.jar` into `plugins/`.
+1. Drop `BluemapStructuresPaper-x.y.z.jar` into `plugins/`.
 2. Restart. On first start the plugin scans each mapped world (progress in console)
    and registers the marker layers when done. Subsequent restarts reuse the cache.
 
 ## Configuration
 
-`plugins/BlueMapStructuresPaper/config.yml`:
+`plugins/BluemapStructuresPaper/config.yml`:
 
 ```yaml
 radius-blocks: 5000        # half-side of the scanned square around (0,0)
@@ -54,7 +55,7 @@ layers:                    # one toggle per structure layer
 ```
 
 After changing `radius-blocks` or `layers`, the next restart re-scans automatically
-(the cache key includes them). Delete `plugins/BlueMapStructuresPaper/cache/` to force
+(the cache key includes them). Delete `plugins/BluemapStructuresPaper/cache/` to force
 a re-scan.
 
 ## How it works

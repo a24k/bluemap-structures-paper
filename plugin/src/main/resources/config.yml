@@ -1,4 +1,4 @@
-# BlueMapStructuresPaper configuration
+# BluemapStructuresPaper configuration
 # Changes apply after a server restart (or /reload of this plugin).
 
 # Half-side, in blocks, of the square around world origin (0,0) that is scanned for
@@ -10,7 +10,7 @@ scan:
   # scan. Lower = slower scan, less TPS impact. Range 1-45.
   budget-ms-per-tick: 20
   # Scan results are deterministic per (seed, radius, enabled layers); cache them in
-  # plugins/BlueMapStructuresPaper/cache/ and skip re-scanning on restart.
+  # plugins/BluemapStructuresPaper/cache/ and skip re-scanning on restart.
   cache-enabled: true
 
 # Per-layer toggles. Each enabled layer becomes its own toggleable marker layer in the

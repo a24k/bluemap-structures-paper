@@ -1,7 +1,7 @@
-name: BlueMapStructuresPaper
+name: BluemapStructuresPaper
 version: '${version}'
-main: dev.a24k.bluemapstructures.BlueMapStructuresPlugin
-api-version: '1.21'
+main: org.ykak.minecraft.bluemapstructurespaper.BlueMapStructuresPlugin
+api-version: '26.1'
 description: Chunkbase-style seed-derived structure markers for BlueMap.
 author: a24k
 website: https://github.com/a24k/bluemap-structures-paper

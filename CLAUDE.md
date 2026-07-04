@@ -5,9 +5,12 @@ Read `docs/REQUIREMENTS.md` and `docs/DESIGN.md` before changing behavior.
 
 ## Module layout
 
-- `core/` — pure Java 21, **no Bukkit/Paper/BlueMap imports allowed**. All logic that
-  can be a pure function lives here, test-first (JUnit 5).
-- `plugin/` — thin Paper adapter. `compileOnly` paper-api + bluemap-api.
+- `core/` — pure Java (`--release 21` so sandbox JDK 21 can run its tests), **no
+  Bukkit/Paper/BlueMap imports allowed**. All logic that can be a pure function lives
+  here, test-first (JUnit 5).
+- `plugin/` — thin Paper adapter, `--release 25` (Minecraft 26.x runs Java 25).
+  `compileOnly` paper-api + bluemap-api. Compiles only where JDK 25 + Paper repos are
+  available (CI).
 
 ## Build commands
 

@@ -15,6 +15,11 @@ dependencies {
   compileOnly(libs.gson) // bundled with Paper at runtime
 }
 
+// Minecraft 26.x servers run on Java 25; compiling this module needs JDK 25 (CI).
+tasks.withType<JavaCompile>().configureEach {
+  options.release = 25
+}
+
 tasks.processResources {
   filteringCharset = "UTF-8"
   filesMatching("plugin.yml") {
@@ -23,7 +28,7 @@ tasks.processResources {
 }
 
 tasks.jar {
-  archiveBaseName = "BlueMapStructuresPaper"
+  archiveBaseName = "BluemapStructuresPaper"
   // Bundle :core (the only runtime dependency) into the plugin jar.
   from({
     configurations.runtimeClasspath.get().filter { it.name.endsWith(".jar") }.map { zipTree(it) }

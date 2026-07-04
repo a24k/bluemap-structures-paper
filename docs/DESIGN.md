@@ -18,7 +18,7 @@ The split is driven by two forces:
    Central only; `plugin` compiles in GitHub Actions CI (unrestricted network). Local
    dev loop: `./gradlew :core:test`.
 
-## 2. core module (`dev.a24k.bluemapstructures.core`)
+## 2. core module (`org.ykak.minecraft.bluemapstructurespaper.core`)
 
 ### 2.1 StructureCatalog / StructureLayer
 
@@ -127,7 +127,7 @@ deterministic string. Seed is stored as `SHA-256(seed)` — the cache file lives
 server directory, but avoiding a plaintext seed copy costs nothing. Cache payload is
 the found-structure list per layer, serialized with Gson (bundled with Paper).
 
-## 3. plugin module (`dev.a24k.bluemapstructures`)
+## 3. plugin module (`org.ykak.minecraft.bluemapstructurespaper`)
 
 ```
 BlueMapStructuresPlugin (JavaPlugin)
@@ -164,12 +164,14 @@ MarkerPublisher
 
 ## 4. Build & CI
 
-- Gradle 8.14 Kotlin DSL, Java toolchain 21.
+- Gradle 9.6 Kotlin DSL. No toolchain pinning: `:core` compiles with `--release 21`
+  (keeps the local test loop alive on sandbox JDK 21), `:plugin` with `--release 25`
+  (Minecraft 26.x servers run Java 25) — CI runs everything on JDK 25.
 - `:core` — no deps beyond JUnit 5 (Central). `./gradlew :core:test` works offline-ish
   (Central + services.gradle.org reachable in the sandbox).
-- `:plugin` — `compileOnly` `io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT`
-  (repo.papermc.io), `de.bluecolored:bluemap-api:2.7.7` (repo.bluecolored.de; 2.8.0
-  needs JVM 25+),
+- `:plugin` — `compileOnly` `io.papermc.paper:paper-api:26.1.2.build.+` (repo.papermc.io;
+  tracks the latest stable build for MC 26.1.2), `de.bluecolored:bluemap-api:2.8.0`
+  (repo.bluecolored.de; requires JVM 25+, hence the Java 25 module),
   `com.google.code.gson` (provided by Paper at runtime). Jar task copies core classes in
   (no shading of external libs needed).
 - GitHub Actions (`.github/workflows/ci.yml`): JDK 21 + `./gradlew build` on push/PR.
@@ -190,4 +192,4 @@ Attribution in `THIRD_PARTY_NOTICES.md`.
 | radius param semantics (blocks vs chunks) | sized in chunks + overlap/oversampling (§2.5); empirical check on live server |
 | BlueMap marker count vs web-app perf | zoom gating (`maxDistance`), dense layers gated at 1000 |
 | paper-api/bluemap-api unavailable in sandbox | module split; CI compiles plugin; core TDD offline |
-| Purpur actually on a different MC version | single pinned constant in `gradle/libs.versions.toml`; PR review checkpoint |
+| Purpur moves to a newer MC version | single pinned constant in `gradle/libs.versions.toml` (`26.1.2.build.+`); `api-version: '26.1'` declares the 26.1+ floor |
