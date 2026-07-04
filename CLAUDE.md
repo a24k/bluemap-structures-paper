@@ -25,6 +25,26 @@ cannot compile locally there — GitHub Actions (`.github/workflows/ci.yml`) is 
 verification loop for `:plugin`. Always run `:core:test` locally before pushing, then
 watch CI for the plugin module.
 
+## Working with subagents
+
+Rules that made delegated implementation work well here; keep following them:
+
+- **Subagents never run git.** They report; the orchestrator reviews the diff and
+  commits. Uncommitted changes during a delegation are in-flight work, not something
+  to commit on a hook's prompting.
+- **Partition parallel work by file ownership** (e.g. agent owns `plugin/`,
+  orchestrator owns `docs/`) so reviews stay clean and edits never collide.
+- **Pre-verify Paper/BlueMap API signatures before writing `plugin/` code** — the
+  module doesn't compile locally, so a guessed signature costs a full CI round trip.
+  Check jd.papermc.io (via search; direct fetch may be blocked) and put exact
+  imports/signatures into the delegation prompt.
+- **Give agents an executable oracle when porting algorithms**: golden-vector
+  generators (e.g. trimmed reference implementations) belong in the session
+  scratchpad, never in the repo; only the generated vectors are committed, inside
+  tests.
+- **Ask for a structured report back**: files touched, exact external API calls used,
+  deviations from instructions, remaining risks. It's the review checklist.
+
 ## Conventions
 
 - 2-space indent (see `.editorconfig`), UTF-8, LF.
