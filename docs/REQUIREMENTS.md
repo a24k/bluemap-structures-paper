@@ -19,7 +19,7 @@ reimplemented on the Paper API so it runs on Paper/Purpur servers.
 | Version           | **[D]** `1.21.11-R0.1-SNAPSHOT` — same Minecraft version the reference mod targets, and the most likely stable line for current Purpur. Minecraft's 2026 year-based versions (26.x) are out of scope until Purpur/BlueMap support is confirmed. |
 | Runtime           | Purpur (Paper-compatible); plain Bukkit/Spigot out of scope   |
 | Java              | 21 (required by Paper 1.20.5+)                                |
-| BlueMap           | BlueMap 5.x via `de.bluecolored:bluemap-api:2.8.0` (soft dependency — the plugin idles harmlessly when BlueMap is absent) |
+| BlueMap           | BlueMap 5.x via `de.bluecolored:bluemap-api:2.7.7` (soft dependency — the plugin idles harmlessly when BlueMap is absent). 2.8.0 requires JVM 25+, incompatible with the Java 21 toolchain. |
 | Plugin descriptor | **[D]** legacy `plugin.yml` — `paper-plugin.yml` offers no benefit here (no loader isolation needed, BlueMap is reached via its API singleton, not classpath), while `softdepend` + `api-version` are battle-tested. |
 
 ## 3. Functional requirements

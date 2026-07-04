@@ -1,7 +1,9 @@
 [versions]
 # Single source of truth for the targeted Minecraft version (see docs/REQUIREMENTS.md §2)
 paper-api = "1.21.11-R0.1-SNAPSHOT"
-bluemap-api = "2.8.0"
+# 2.8.0 publishes gradle metadata requiring JVM 25+; 2.7.7 is the newest
+# Java-21-compatible release and the API is runtime-forward-compatible with BlueMap 5.x
+bluemap-api = "2.7.7"
 gson = "2.11.0"
 junit = "5.11.4"
 

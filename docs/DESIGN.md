@@ -168,7 +168,8 @@ MarkerPublisher
 - `:core` — no deps beyond JUnit 5 (Central). `./gradlew :core:test` works offline-ish
   (Central + services.gradle.org reachable in the sandbox).
 - `:plugin` — `compileOnly` `io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT`
-  (repo.papermc.io), `de.bluecolored:bluemap-api:2.8.0` (repo.bluecolored.de),
+  (repo.papermc.io), `de.bluecolored:bluemap-api:2.7.7` (repo.bluecolored.de; 2.8.0
+  needs JVM 25+),
   `com.google.code.gson` (provided by Paper at runtime). Jar task copies core classes in
   (no shading of external libs needed).
 - GitHub Actions (`.github/workflows/ci.yml`): JDK 21 + `./gradlew build` on push/PR.
