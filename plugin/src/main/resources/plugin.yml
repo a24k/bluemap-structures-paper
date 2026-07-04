@@ -1,0 +1,9 @@
+name: BlueMapStructuresPaper
+version: '${version}'
+main: dev.a24k.bluemapstructures.BlueMapStructuresPlugin
+api-version: '1.21'
+description: Chunkbase-style seed-derived structure markers for BlueMap.
+author: a24k
+website: https://github.com/a24k/bluemap-structures-paper
+softdepend:
+  - BlueMap
