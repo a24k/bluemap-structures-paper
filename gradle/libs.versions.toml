@@ -1,0 +1,14 @@
+[versions]
+# Single source of truth for the targeted Minecraft version (see docs/REQUIREMENTS.md §2)
+paper-api = "1.21.11-R0.1-SNAPSHOT"
+bluemap-api = "2.8.0"
+gson = "2.11.0"
+junit = "5.11.4"
+
+[libraries]
+paper-api = { module = "io.papermc.paper:paper-api", version.ref = "paper-api" }
+bluemap-api = { module = "de.bluecolored:bluemap-api", version.ref = "bluemap-api" }
+gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
