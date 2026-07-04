@@ -35,27 +35,31 @@ city, trail ruins, trial chambers, ocean ruin, shipwreck, ruined portal (overwor
 ocean monument, woodland mansion, nether fortress, bastion remnant, ruined portal
 (nether), end city, buried treasure, stronghold.
 
-- Positions come from `World#locateNearestStructure(Location, Structure, int, boolean)`
-  with `findUnexplored = true` — the same code path as vanilla `/locate`. No
-  reimplementation of the placement algorithm.
+- **[D — revised after real-server testing, see issue #3]** Positions are computed by
+  reimplementing vanilla's placement math in `core` (Chunkbase-style), validated
+  against biome data through the Paper API (`vanillaBiomeProvider` + `has_structure/*`
+  biome tags). The originally planned `World#locateNearestStructure` path was
+  disproven in practice: despite `findUnexplored = true` it synchronously loads chunks
+  to the STRUCTURE_STARTS stage per candidate cell and stalls the main thread; it is
+  no longer used.
 - One *layer* may aggregate several registry structures (e.g. the "village" layer covers
   `minecraft:village_plains` … `village_taiga`; "ocean ruin" covers cold + warm).
-- **[D]** Buried treasure ships **disabled by default**: its placement grid is 1 chunk,
-  so exhaustive enumeration via `locateNearestStructure` costs ~100k queries at the
-  default radius. It stays available as an opt-in with a documented warning. (The
-  reference mod affords it only because it re-derives positions directly from the seed.)
+- **[D]** Buried treasure ships **disabled by default**: per-chunk placement yields
+  ~0.01 × chunks ≈ thousands of markers at the default radius, which strains the
+  BlueMap web app. (Compute cost is no longer a concern with seed math.)
 
 ### FR-2 Area enumeration
 
-`locateNearestStructure` returns only the nearest hit, so exhaustive coverage of a
-radius is achieved by sampling:
+Exhaustive coverage of the search area comes directly from the placement math (one
+candidate per placement region), not from sampling:
 
-- Grid-placed structures: sample the center of every placement cell (side =
-  `spacing` chunks, cell grid anchored at chunk 0,0) intersecting the search square,
-  with a per-query search radius that covers the whole cell. Results are de-duplicated.
-- Strongholds (concentric rings): sample along each vanilla ring that intersects the
-  search radius, densely enough that every stronghold in the ring is the nearest hit of
-  at least one sample.
+- Grid-placed structures: vanilla random-spread — one candidate chunk per
+  `spacing`-chunk region, position derived from
+  `Random(regionX·c1 + regionZ·c2 + seed + salt)`; fortress/bastion share one grid
+  with a weighted occupancy roll.
+- Strongholds: vanilla's concentric-ring geometry (pre-biome-nudge approximation,
+  documented accuracy ≤ ~112 blocks).
+- Buried treasure: per-chunk probability roll (opt-in layer).
 - Search area: square of configurable half-side `radius-blocks` centered on **world
   origin (0,0)** **[D]** — matches the reference mod and the vanilla ring center;
   spawn-centered search can be added later if wanted.
@@ -81,27 +85,24 @@ radius is achieved by sampling:
 | Key                          | Default | Meaning                                        |
 | ---------------------------- | ------- | ---------------------------------------------- |
 | `radius-blocks`              | `5000`  | Half-side of the search square around (0,0)    |
-| `scan.budget-ms-per-tick`    | `20`    | Main-thread time budget per tick for locating  |
-| `scan.cache-enabled`         | `true`  | Persist scan results; skip re-scan on restart  |
 | `layers.<id>`                | `true` (buried treasure: `false`) | Per-layer toggle |
 
 Unknown layer ids are ignored with a warning; missing keys fall back to defaults.
 
-### FR-5 Result caching
+### FR-5 Recompute at startup
 
-Scan output is deterministic given (seed, radius, layer set, plugin data version), so
-results are cached per world in the plugin data folder and reused on restart when the
-key matches. Deleting the cache or changing config triggers a re-scan.
+Seed math costs milliseconds per world, so results are recomputed on every startup /
+BlueMap reload; there is no persistent cache and no state in the plugin data folder
+beyond `config.yml`. (The former JSON result cache and its invalidation machinery were
+removed with the pivot.)
 
 ## 4. Non-functional requirements
 
-- **NFR-1 TPS safety.** `locateNearestStructure` runs on the main thread (its
-  thread-safety off-main is undocumented), but *batched*: each tick consumes at most
-  `scan.budget-ms-per-tick` milliseconds, then yields. The scan is a one-time startup
-  cost (amortized to zero by FR-5). **[D]** Async execution via
-  `Bukkit.getAsyncScheduler()` is deliberately deferred until the main-thread cost is
-  measured (brief's "Known Concerns"); the scanner is structured so the execution
-  strategy is swappable.
+- **NFR-1 TPS safety.** The scan performs **no chunk or world access**: candidate
+  generation is pure math and biome validation uses the noise-based
+  `vanillaBiomeProvider` (documented thread-safe). It runs on an async task; the main
+  thread is used only to set up per-world inputs and to publish markers. Measured
+  cost target: milliseconds per world.
 - **NFR-2 Web-UI responsiveness.** Dense layers get `maxDistance` zoom gating with the
   same distance tiers as the reference mod (5000 / 1000).
 - **NFR-3 Testability.** All seed-independent logic (catalog, sampling plans,
@@ -116,16 +117,19 @@ key matches. Deleting the cache or changing config triggers a re-scan.
 - Folia support (Purpur is not Folia; classic `BukkitScheduler` is used).
 - Live re-scan commands / config hot-reload (restart to apply).
 - Spawn-centered or multi-center search areas.
-- Biome-derived filtering beyond what `locateNearestStructure` already does (it is
-  biome-exact — better than Chunkbase-style prediction).
+- End-city ship detection (the reference mod marks end ships separately; ours marks
+  the city only).
 - Minecraft 1.21.x and older (the plugin targets the 26.x line onward).
 
 ## 6. Open questions carried into implementation
 
-- The `radius` parameter of `locateNearestStructure` is passed straight through to
-  vanilla `findNearestMapStructure`, where it acts as a *chunk ring count* for
-  random-spread placements despite the Javadoc saying blocks. The sampling plan sizes
-  it in chunks, generously; verified empirically during server testing (see
-  `docs/DESIGN.md` §Sampling).
-- Real cost per query is unmeasured; the per-tick budget default (20 ms) is
-  conservative and tunable.
+Fidelity gaps of the seed-math locator vs vanilla, to be checked against a real server
+(`/locate` spot checks) before deciding whether to model them (see DESIGN §2.2):
+
+- Stronghold positions are the pre-biome-nudge geometry (≤ ~112 blocks off).
+- Pillager outposts: vanilla applies an extra `nextInt(5)==0` rarity gate that neither
+  the reference mod nor this implementation models → expected over-reporting.
+- Fortress/bastion occupancy: modeled as the classic 2-of-5 carver-seed roll; cubiomes
+  treats 1.18+ fortresses as biome-gated instead.
+- End cities: vanilla enforces a ≥1008-block distance floor; our biome check masks
+  most of it but not exactly.

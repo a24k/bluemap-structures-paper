@@ -1,195 +1,159 @@
 # Design
 
+> **Architecture pivot (issue #3):** the first implementation drove
+> `World#locateNearestStructure(findUnexplored=true)` from the main thread. Real-server
+> testing showed that call **synchronously loads chunks** to the STRUCTURE_STARTS stage
+> per candidate cell (`getStructureGeneratingAt` → `syncLoadNonFull`), parking the
+> server thread for 10+ seconds per call under startup load. The design below is the
+> replacement: Chunkbase-style seed math with Paper-API biome validation — zero chunk
+> access, async, milliseconds per world.
+
 ## 1. Module layout
 
 ```
 bluemap-structures-paper/
 ├── core/     Pure Java (`--release 21`). No Bukkit/Paper/BlueMap types. Unit-tested (JUnit 5).
-└── plugin/   Paper plugin. compileOnly paper-api + bluemap-api. Thin adapter over core.
+└── plugin/   Paper plugin (`--release 25`). compileOnly paper-api + bluemap-api. Thin adapter.
 ```
 
 The split is driven by two forces:
 
 1. **TDD.** Everything that can be a pure function is one, and lives in `core` where it
-   is trivially testable: the structure catalog, sampling plans, deduplication, config
-   interpretation, marker text/ids, cache keys.
+   is trivially testable: the structure catalog, the seed-math locator, config
+   interpretation, marker text/ids.
 2. **Build environment.** The sandboxed dev environment can reach Maven Central but not
-   `repo.papermc.io` / `repo.bluecolored.de`. `core` builds and tests offline against
-   Central only; `plugin` compiles in GitHub Actions CI (unrestricted network). Local
-   dev loop: `./gradlew :core:test`.
+   `repo.papermc.io` / `repo.bluecolored.de`, and only ships JDK 21. `core` builds and
+   tests offline against Central; `plugin` compiles in GitHub Actions CI (JDK 25,
+   unrestricted network). Local dev loop: `./gradlew :core:test`.
 
 ## 2. core module (`org.ykak.minecraft.bluemapstructurespaper.core`)
 
 ### 2.1 StructureCatalog / StructureLayer
 
-Static table of the 20 supported layers, ported from mc-bluemap-structures'
-`StructureType` (MIT; see `THIRD_PARTY_NOTICES.md`) and cross-checked against vanilla
-`StructureSet` constants:
+Static table of the 20 supported layers. Each layer carries its vanilla placement
+parameters (cross-checked against cubiomes `finders.c`, MIT) and the
+`minecraft:has_structure/*` biome tag ids used for validation:
 
 ```java
 record StructureLayer(
-    String id,                 // "village" — config key & marker-set id suffix
-    String displayName,        // "Villages"
-    Dimension dimension,       // OVERWORLD | NETHER | END
-    Placement placement,       // GRID(spacingChunks) | CONCENTRIC_RINGS
-    List<String> structureKeys,// registry keys aggregated into this layer
-    int zoomMaxDistance,       // POIMarker maxDistance (5000 wide / 1000 zoomed-in)
-    String iconFile,           // classpath icons/<file>.png
-    boolean defaultEnabled)    // buried_treasure: false
+    String id, String displayName, Dimension dimension,
+    Placement placement,          // see 2.2
+    List<String> structureKeys,   // registry keys (metadata / cache identity)
+    List<String> biomeTagIds,     // has_structure/* tags; empty = no biome restriction
+    int zoomMaxDistance,          // 5000 always visible / 1000 zoomed-in only
+    String iconFile, boolean defaultEnabled)
 ```
 
-| layer id | keys (minecraft:…) | spacing (chunks) | dim | zoom |
-| --- | --- | --- | --- | --- |
-| village | village_plains, village_desert, village_savanna, village_snowy, village_taiga | 34 | OW | 5000 |
-| desert_pyramid | desert_pyramid | 32 | OW | 5000 |
-| jungle_temple | jungle_pyramid | 32 | OW | 5000 |
-| swamp_hut | swamp_hut | 32 | OW | 5000 |
-| igloo | igloo | 32 | OW | 5000 |
-| pillager_outpost | pillager_outpost | 32 | OW | 5000 |
-| ancient_city | ancient_city | 24 | OW | 5000 |
-| trail_ruins | trail_ruins | 34 | OW | 5000 |
-| trial_chambers | trial_chambers | 34 | OW | 1000 |
-| ocean_ruin | ocean_ruin_cold, ocean_ruin_warm | 20 | OW | 1000 |
-| shipwreck | shipwreck, shipwreck_beached | 24 | OW | 1000 |
-| ruined_portal | ruined_portal, ruined_portal_desert, ruined_portal_jungle, ruined_portal_swamp, ruined_portal_mountain, ruined_portal_ocean | 40 | OW | 1000 |
-| monument | monument | 32 | OW | 5000 |
-| mansion | mansion | 80 | OW | 5000 |
-| fortress | fortress | 27 | NETHER | 5000 |
-| bastion | bastion_remnant | 27 | NETHER | 5000 |
-| ruined_portal_nether | ruined_portal_nether | 25 | NETHER | 5000 |
-| end_city | end_city | 20 | END | 5000 |
-| buried_treasure | buried_treasure | 1 | OW | 1000 |
-| stronghold | stronghold | rings | OW | 5000 |
+Layer set (spacing/separation/salt omitted here — the catalog source is authoritative):
+village, desert_pyramid, jungle_temple, swamp_hut, igloo, pillager_outpost,
+ancient_city, trail_ruins, trial_chambers, ocean_ruin, shipwreck, ruined_portal (OW),
+monument, mansion, fortress, bastion, ruined_portal_nether, end_city, buried_treasure
+(opt-in), stronghold.
 
-Note: `jungle_temple`'s registry key really is `jungle_pyramid`; the Bukkit `Structure`
-registry follows vanilla naming. `ruined_portal_nether` uses vanilla's spacing 25 —
-the reference mod's 40 would leave placement cells unsampled.
+Known deliberate deviation: `ruined_portal_nether` uses the 1.17+ config
+(spacing 25 / separation 10, cubiomes `s_ruined_portal_n_117`); the reference mod's
+40 / 15 is the pre-1.17 config.
 
-### 2.2 Sampling — SamplePlanner
+### 2.2 SeedStructureLocator
 
-`locateNearestStructure(origin, structure, radius, findUnexplored=true)` returns the
-single nearest instance, so exhaustive coverage = many well-placed queries + dedup.
+Pure seed math, one method per placement kind (`Placement` is a sealed interface):
 
-**Grid placements** (`SamplePlan.forGrid`). Vanilla random-spread placement puts at most
-one attempt in each `spacing × spacing`-chunk cell, cells anchored at chunk (0,0). For
-every cell intersecting the search square we emit one sample at the cell's block center.
-Per-query search radius (in *chunks* — see §2.5) is `spacing`, which from the cell
-center covers the entire cell regardless of where in the cell the attempt landed.
-Neighboring queries overlap on purpose; `Deduplicator` collapses them.
+- **`Grid(spacing, separation, salt, spread)`** — vanilla random-spread: for every
+  placement region `(rx, rz)` covering the search square,
+  `Random(rx·341873128712 + rz·132897987541 + worldSeed + salt)`, then offset
+  `nextInt(spacing − separation)` per axis (LINEAR) or the average of two rolls
+  (TRIANGULAR: monument, mansion, end_city). One candidate chunk per region; block
+  position is the chunk center (+8, +8).
+- **`NetherComplex(role)`** — fortress and bastion share one grid
+  (27 / 4 / salt 30084232); a second roll decides the occupant:
+  `carverSeed = multA·chunkX ^ multB·chunkZ ^ worldSeed` (multA/multB from
+  `Random(worldSeed).nextLong()` twice), `nextInt(5) < 2` → fortress, else bastion.
+- **`ConcentricRings`** — strongholds: vanilla's 128-count / 8-ring geometric
+  algorithm seeded with `Random(worldSeed)`. **Accuracy caveat:** vanilla nudges each
+  position up to ~112 blocks toward a valid biome using world data this module
+  deliberately lacks; we return the pre-nudge geometric position.
+- **`PerChunkProbability(salt, p)`** — buried treasure:
+  `Random(chunkX·341873128712 + chunkZ·132897987541 + seed + 10387320).nextFloat() < 0.01`
+  per chunk.
 
-Query count ≈ `ceil(2r / 16·spacing)²` per layer — at r=5000: village ~100, mansion ~16,
-ocean_ruin ~250. Total for all default layers ≈ 1.6k queries, a few minutes of budgeted
-main-thread time worst-case, once per world (then cached).
+Biome validation is delegated: `locate(layer, seed, radius, BiomeCheck)` calls
+`check.isValid(layer, x, z)` for **every** candidate (empty-tag layers included — the
+plugin's check treats "no tags" as always-valid; the locator stays a pure placement
+engine).
 
-**Concentric rings** (`SamplePlan.forRings`). Strongholds: 128 in 8 rings (vanilla
-`ConcentricRingsStructurePlacement`: distance 32, spread 3, count 128). Ring *i*
-(1-based, counts 3/6/10/15/21/28/36/9) spans radius `(1280 + 3072(i−1)) … (2816 +
-3072(i−1))` blocks. For each ring intersecting the search radius we emit `2 × count`
-samples evenly spaced on the ring's mid-radius circle, each with a search radius wide
-enough to cover its ring segment. 2× oversampling guarantees every stronghold is the
-nearest hit of some sample (angular gap between samples < minimal angular spacing of
-strongholds in that ring).
+**Verification:** golden-vector JUnit tests — expected positions generated by compiling
+and running the reference implementation (trimmed, in scratchpad, not committed) for
+seeds {42, 69420, −3849722879} — plus property tests (cell containment, determinism,
+fortress/bastion partition of the shared grid).
 
-### 2.3 Deduplication
+Known fidelity gaps vs vanilla (documented, follow-up candidates): pillager outposts
+have an extra `nextInt(5)==0` rarity gate in vanilla (neither the reference mod nor we
+apply it → over-reports outposts); end cities have a ≥1008-block distance floor (the
+biome check masks most of it); cubiomes models 1.18+ fortresses as biome-gated rather
+than rolled. All three are validated against a real server before changing.
 
-`Deduplicator.dedupe(List<FoundStructure>)` — identity is `(structureKey, x, z)`.
-Insertion order preserved (stable output → stable cache diffs, stable marker ids).
+### 2.3 Settings
 
-### 2.4 Settings
+`Settings.fromMap(Map, catalog)` — `radius-blocks` (default 5000, clamped
+256…1,000,000) and per-layer toggles. The scan is pure math now, so the previous
+`scan.budget-ms-per-tick` / `scan.cache-enabled` keys are gone. Unknown keys and
+malformed values are collected into `warnings()` for the plugin to log.
 
-`Settings.fromMap(Map<String, Object>, StructureCatalog)` parses the already-YAML-parsed
-config tree (the plugin passes `FileConfiguration#getValues(true)`-style nested maps, so
-core never sees Bukkit types). Defaults per REQUIREMENTS FR-4, values clamped
-(`radius-blocks` 256…1_000_000, `budget-ms-per-tick` 1…45), unknown layer ids collected
-into `warnings()` for the plugin to log.
+### 2.4 MarkerData
 
-### 2.5 The radius parameter caveat
-
-CraftBukkit forwards `radius` untouched into vanilla
-`ChunkGenerator#findNearestMapStructure`, where random-spread search iterates placement
-cells in rings — effectively a *chunk* radius — although the Bukkit Javadoc says blocks.
-We size per-query radii in chunks (grid: `spacing`; rings: ring half-width in chunks).
-If an implementation ever treats it as blocks, the searched area only shrinks for values
-> 16 — mitigated by the 2× ring oversampling and by grid cells being re-covered from
-all 4 neighboring samples' overlap. Verified empirically on a real server (task in PR
-description).
-
-### 2.6 Marker content — MarkerData
-
-Pure formatting: marker id `bmsp-<layer>-<x>-<z>`, marker-set id `structures-<layer>`,
-label `"<display name> (x, z)"`, popup HTML with copyable `/tp @s <x> <y> <z>` in a
-`<code>` block. All interpolated strings HTML-escaped.
-
-### 2.7 Cache key — ScanCacheKey
-
-`(worldUid, seedHash, radiusBlocks, sorted enabled layer ids, CACHE_VERSION)` →
-deterministic string. Seed is stored as `SHA-256(seed)` — the cache file lives in the
-server directory, but avoiding a plaintext seed copy costs nothing. Cache payload is
-the found-structure list per layer, serialized with Gson (bundled with Paper).
+Unchanged: marker/set ids (`bmsp-<layer>-<x>-<z>`, `structures-<layer>`), labels,
+popup HTML with copyable `/tp` (HTML-escaped), `defaultY` per dimension (63 OW / 64
+nether+end).
 
 ## 3. plugin module (`org.ykak.minecraft.bluemapstructurespaper`)
 
 ```
 BlueMapStructuresPlugin (JavaPlugin)
- ├─ onEnable: saveDefaultConfig → Settings.fromMap → register BlueMapAPI.onEnable/onDisable
- ├─ BlueMapAPI.onEnable  → ScanCoordinator.start(api)
- └─ BlueMapAPI.onDisable → MarkerPublisher.removeAll(api); cancel scan task
+ ├─ onEnable: saveDefaultConfig → Settings.fromMap → BlueMapAPI.onEnable/onDisable
+ ├─ BlueMapAPI.onEnable  → (main thread hop) ScanCoordinator.start(api)
+ └─ BlueMapAPI.onDisable → ScanCoordinator.stop(api)
 
-ScanCoordinator
- ├─ per Bukkit world (matched to catalog Dimension via World.Environment)
- │   ├─ cache hit  → publish immediately
- │   └─ cache miss → StructureScanner (BukkitRunnable, runTaskTimer period 1)
- │        each tick: pop sample queries until budget-ms exhausted;
- │        world.locateNearestStructure(loc, structure, radiusChunks, true)
- │        on queue drained: dedupe → cache store → publish
- └─ resolves layer structureKeys via RegistryAccess.registryAccess()
-        .getRegistry(RegistryKey.STRUCTURE).get(NamespacedKey) — unknown keys logged
-        & skipped (forward/backward compat)
-
-MarkerPublisher
- ├─ icons: classpath icons/*.png → BufferedImage → api.getWebApp().createImage()
- ├─ for each BlueMapMap of api.getWorld(bukkitWorld): MarkerSet per enabled layer
- │    (label = displayName, defaultHidden = false)
- └─ POIMarker.builder().position(x, y, z).icon(addr, anchor 11,11)
-        .maxDistance(zoomMaxDistance).detail(popup html)
+ScanCoordinator.start — per world with a Dimension and a BlueMap map:
+ ├─ MAIN: capture seed/radius, build BiomeTagCheck
+ │        (world.vanillaBiomeProvider() + Registry<Biome> tags resolved to per-layer
+ │         Set<Biome>; missing tags → WARN + skip; provider failure → validate-all)
+ ├─ ASYNC (runTaskAsynchronously): SeedStructureLocator.locate per enabled layer
+ │        (BiomeProvider#getBiome is documented thread-safe); log totals + elapsed
+ └─ MAIN (runTask): MarkerPublisher.publish — icons via WebApp#createImage,
+          MarkerSet per layer per map, POIMarker with icon anchor (11,11),
+          maxDistance zoom gating, /tp popup
 ```
 
-- Marker publishing happens inside the scan-completion tick (main thread); BlueMap's
-  marker API is safe to call there and updates are pushed to the web app by BlueMap.
-- Y coordinate for markers/`/tp`: overworld & end use the located block's Y if the
-  search result provides one, else sea level 63 (OW) / 64 (END); nether uses 64 to
-  avoid teleporting onto the roof. Kept in core (`MarkerData.defaultY`) for testing.
-- If BlueMap is not installed, `BlueMapAPI.onEnable` never fires; the plugin logs one
-  INFO line and does nothing else.
+- No `locateNearestStructure`, no chunk access, no structure-registry lookups.
+- No result cache: recomputing at startup costs milliseconds.
+- Worlds loaded after the scan (`/mv load`) are picked up on the next restart or
+  `/bluemap reload` (unchanged limitation).
 
 ## 4. Build & CI
 
 - Gradle 9.6 Kotlin DSL. No toolchain pinning: `:core` compiles with `--release 21`
   (keeps the local test loop alive on sandbox JDK 21), `:plugin` with `--release 25`
   (Minecraft 26.x servers run Java 25) — CI runs everything on JDK 25.
-- `:core` — no deps beyond JUnit 5 (Central). `./gradlew :core:test` works offline-ish
-  (Central + services.gradle.org reachable in the sandbox).
+- `:core` — no deps beyond JUnit 5 (Central).
 - `:plugin` — `compileOnly` `io.papermc.paper:paper-api:26.1.2.build.+` (repo.papermc.io;
   tracks the latest stable build for MC 26.1.2), `de.bluecolored:bluemap-api:2.8.0`
-  (repo.bluecolored.de; requires JVM 25+, hence the Java 25 module),
-  `com.google.code.gson` (provided by Paper at runtime). Jar task copies core classes in
-  (no shading of external libs needed).
-- GitHub Actions (`.github/workflows/ci.yml`): JDK 25 + `./gradlew build` on push/PR.
-  This is where `:plugin` compilation is actually verified — treat CI as part of the
-  red/green loop for the plugin module.
+  (repo.bluecolored.de). Jar task copies core classes in (no shading of external libs).
+- GitHub Actions (`.github/workflows/ci.yml`): JDK 25 + `./gradlew build` on push.
+  CI is where `:plugin` compilation is actually verified.
 
 ## 5. Icons
 
-21 PNGs (20 layers + `end_ship.png` reserved) copied from mc-bluemap-structures
-(`src/main/resources/icons/`, MIT license) into `plugin/src/main/resources/icons/`.
-Attribution in `THIRD_PARTY_NOTICES.md`.
+21 PNGs from mc-bluemap-structures (declared MIT; provenance caveat and the
+runtime-fetch replacement plan tracked in issue #2) in
+`plugin/src/main/resources/icons/`, uploaded through the BlueMap web app at runtime.
 
 ## 6. Risks & mitigations
 
 | Risk | Mitigation |
 | --- | --- |
-| `locateNearestStructure` cost unknown | per-tick ms budget; one-time scan; cache; radius default 5000 (not 10k) |
-| radius param semantics (blocks vs chunks) | sized in chunks + overlap/oversampling (§2.5); empirical check on live server |
-| BlueMap marker count vs web-app perf | zoom gating (`maxDistance`), dense layers gated at 1000 |
+| Placement constants drift in future MC versions | catalog cross-checked against cubiomes; single source in `StructureCatalog`; golden-vector tests pin behavior |
+| Stronghold positions off by ≤ ~112 blocks (no biome nudge) | documented; markers still land on the map; revisit if /tp precision matters |
+| Outpost over-reporting (missing vanilla rarity gate) | verify on a real server vs /locate, then decide (issue #3 notes) |
+| BlueMap web app slows with many markers | zoom gating (`maxDistance`), buried treasure opt-in (thousands of markers) |
+| `vanillaBiomeProvider` failures on exotic worlds | try/catch → validate-all + one WARN (Paper #9394) |
 | paper-api/bluemap-api unavailable in sandbox | module split; CI compiles plugin; core TDD offline |
-| Purpur moves to a newer MC version | single pinned constant in `gradle/libs.versions.toml` (`26.1.2.build.+`); `api-version: '26.1'` declares the 26.1+ floor |

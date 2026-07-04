@@ -19,11 +19,12 @@ A Paper-API reimplementation of the Fabric mod
 - **Copyable `/tp` command** in every marker popup.
 - **Zoom-gated visibility** for dense layers (shipwrecks, ocean ruins, …) to keep the
   web app responsive.
-- **Seed-exact, biome-exact** — positions come from the same code path as vanilla
-  `/locate` (`World#locateNearestStructure` with `findUnexplored=true`), so unlike
-  pure seed calculators there are no biome-mismatch false positives.
-- **TPS-friendly** — the one-time scan is time-budgeted per tick (default 20 ms) and
-  results are cached, so restarts are free.
+- **Seed-derived, biome-validated** — candidate positions come from vanilla's own
+  placement math (same approach as Chunkbase), then each candidate is checked against
+  the world's noise-based biome source (`has_structure/*` biome tags) through the
+  Paper API. No chunks are loaded or generated at any point.
+- **TPS-friendly** — the whole scan is pure math on an async thread and finishes in
+  milliseconds per world; the main thread only publishes the markers.
 
 ## Requirements
 
@@ -45,24 +46,23 @@ A Paper-API reimplementation of the Fabric mod
 
 ```yaml
 radius-blocks: 5000        # half-side of the scanned square around (0,0)
-scan:
-  budget-ms-per-tick: 20   # max ms per tick spent scanning (1-45)
-  cache-enabled: true      # reuse results across restarts
 layers:                    # one toggle per structure layer
   village: true
   # ...
-  buried_treasure: false   # opt-in: per-chunk placement makes scanning expensive
+  buried_treasure: false   # opt-in: ~0.01/chunk → thousands of markers at radius 5000
 ```
 
-After changing `radius-blocks` or `layers`, the next restart re-scans automatically
-(the cache key includes them). Delete `plugins/BlueMapStructuresPaper/cache/` to force
-a re-scan.
+Markers are recomputed from the seed on every start (it costs milliseconds), so config
+changes apply on the next restart — there is no cache to clear.
 
 ## How it works
 
-`locateNearestStructure` only returns the *nearest* structure, so the plugin samples a
-grid sized to each structure's vanilla placement spacing (one query per placement
-cell), plus ring-shaped sampling for strongholds, then de-duplicates the hits. See
+Structure positions are computed from the world seed with vanilla's placement
+algorithm (random-spread grids per structure set, concentric rings for strongholds),
+then validated against the server's noise-based biome source via the Paper API — the
+same technique as Chunkbase's Seed Map, and the reason no chunks need to exist. An
+earlier prototype used `World#locateNearestStructure`; it turned out to sync-load
+chunks per candidate cell and stall the server (see issue #3). See
 [docs/DESIGN.md](docs/DESIGN.md) for the details and
 [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) for the refined requirements.
 
