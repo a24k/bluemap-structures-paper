@@ -1,17 +1,14 @@
 package org.ykak.minecraft.bluemapstructurespaper;
 
+import de.bluecolored.bluemap.api.AssetStorage;
 import de.bluecolored.bluemap.api.BlueMapAPI;
 import de.bluecolored.bluemap.api.BlueMapMap;
 import de.bluecolored.bluemap.api.markers.MarkerSet;
 import de.bluecolored.bluemap.api.markers.POIMarker;
-import org.ykak.minecraft.bluemapstructurespaper.core.FoundStructure;
-import org.ykak.minecraft.bluemapstructurespaper.core.MarkerData;
-import org.ykak.minecraft.bluemapstructurespaper.core.Settings;
-import org.ykak.minecraft.bluemapstructurespaper.core.StructureCatalog;
-import org.ykak.minecraft.bluemapstructurespaper.core.StructureLayer;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,10 +16,16 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.imageio.ImageIO;
 import org.bukkit.World;
+import org.ykak.minecraft.bluemapstructurespaper.core.FoundStructure;
+import org.ykak.minecraft.bluemapstructurespaper.core.MarkerData;
+import org.ykak.minecraft.bluemapstructurespaper.core.Settings;
+import org.ykak.minecraft.bluemapstructurespaper.core.StructureCatalog;
+import org.ykak.minecraft.bluemapstructurespaper.core.StructureLayer;
 
 /**
  * Builds BlueMap marker sets (one toggleable set per layer per map) from scan results.
- * Icons are uploaded once per BlueMap enable via the web app.
+ * Icons are stored per map through {@link AssetStorage} (the non-deprecated replacement
+ * for {@code WebApp#createImage}); existing assets are reused across restarts.
  */
 final class MarkerPublisher {
 
@@ -30,9 +33,7 @@ final class MarkerPublisher {
 
   private final BlueMapStructuresPlugin plugin;
   private final Settings settings;
-  private final Map<String, String> iconAddresses = new HashMap<>();
   private final Set<String> publishedSetIds = ConcurrentHashMap.newKeySet();
-  private boolean iconsUploaded;
 
   MarkerPublisher(BlueMapStructuresPlugin plugin, Settings settings) {
     this.plugin = plugin;
@@ -41,7 +42,6 @@ final class MarkerPublisher {
 
   /** Main thread only. */
   void publish(BlueMapAPI api, World world, Map<String, List<FoundStructure>> resultsByLayer) {
-    uploadIconsOnce(api);
     api.getWorld(world)
         .ifPresent(
             blueMapWorld -> {
@@ -57,11 +57,11 @@ final class MarkerPublisher {
       map.getMarkerSets().keySet().removeAll(publishedSetIds);
     }
     publishedSetIds.clear();
-    iconsUploaded = false;
-    iconAddresses.clear();
   }
 
   private void publishToMap(BlueMapMap map, Map<String, List<FoundStructure>> resultsByLayer) {
+    Map<String, String> iconAddresses = storeIcons(map);
+
     for (Map.Entry<String, List<FoundStructure>> entry : resultsByLayer.entrySet()) {
       StructureLayer layer = StructureCatalog.byId(entry.getKey()).orElse(null);
       if (layer == null || entry.getValue().isEmpty()) {
@@ -94,30 +94,37 @@ final class MarkerPublisher {
     }
   }
 
-  private void uploadIconsOnce(BlueMapAPI api) {
-    if (iconsUploaded) {
-      return;
-    }
-    iconsUploaded = true;
+  /** Writes bundled icons into the map's asset storage (skipping ones already there). */
+  private Map<String, String> storeIcons(BlueMapMap map) {
+    Map<String, String> addresses = new HashMap<>();
+    AssetStorage storage = map.getAssetStorage();
     for (StructureLayer layer : StructureCatalog.layers()) {
       if (!settings.isLayerEnabled(layer.id())) {
         continue;
       }
-      try (InputStream stream =
-          plugin.getResource("icons/" + layer.iconFile())) {
-        if (stream == null) {
-          plugin.getLogger().warning("Missing bundled icon: " + layer.iconFile());
-          continue;
+      String assetName = "bmsp-" + layer.iconFile();
+      try {
+        if (!storage.assetExists(assetName)) {
+          try (InputStream stream = plugin.getResource("icons/" + layer.iconFile())) {
+            if (stream == null) {
+              plugin.getLogger().warning("Missing bundled icon: " + layer.iconFile());
+              continue;
+            }
+            BufferedImage image = ImageIO.read(stream);
+            try (OutputStream out = storage.writeAsset(assetName)) {
+              ImageIO.write(image, "png", out);
+            }
+          }
         }
-        BufferedImage image = ImageIO.read(stream);
-        String address =
-            api.getWebApp().createImage(image, "structures/" + layer.iconFile());
-        iconAddresses.put(layer.id(), address);
+        addresses.put(layer.id(), storage.getAssetUrl(assetName));
       } catch (IOException e) {
         plugin
             .getLogger()
-            .warning("Could not upload icon " + layer.iconFile() + ": " + e.getMessage());
+            .warning(
+                "Could not store icon " + layer.iconFile() + " for map '" + map.getId()
+                    + "': " + e.getMessage());
       }
     }
+    return addresses;
   }
 }
