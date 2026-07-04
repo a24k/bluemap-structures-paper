@@ -22,8 +22,10 @@ tasks.withType<JavaCompile>().configureEach {
 
 tasks.processResources {
   filteringCharset = "UTF-8"
+  // captured at configuration time: Task.project is deprecated at execution time (Gradle 10)
+  val pluginVersion = project.version.toString()
   filesMatching("plugin.yml") {
-    expand("version" to project.version)
+    expand("version" to pluginVersion)
   }
 }
 
