@@ -58,12 +58,16 @@ Known deliberate deviation: `ruined_portal_nether` uses the 1.17+ config
 
 Pure seed math, one method per placement kind (`Placement` is a sealed interface):
 
-- **`Grid(spacing, separation, salt, spread)`** — vanilla random-spread: for every
-  placement region `(rx, rz)` covering the search square,
+- **`Grid(spacing, separation, salt, spread[, frequency, exclusionZone])`** — vanilla
+  random-spread: for every placement region `(rx, rz)` covering the search square,
   `Random(rx·341873128712 + rz·132897987541 + worldSeed + salt)`, then offset
   `nextInt(spacing − separation)` per axis (LINEAR) or the average of two rolls
   (TRIANGULAR: monument, mansion, end_city). One candidate chunk per region; block
-  position is the chunk center (+8, +8).
+  position is the chunk center (+8, +8). Two optional gates then filter the candidate:
+  `frequency < 1` applies vanilla's `legacy_type_1` rarity reduction, and
+  `exclusionZone` drops candidates within N chunks (Chebyshev) of another grid's
+  placement candidates. Only `pillager_outpost` uses them (0.2 / villages·10 — see the
+  closed-gap note below for the exact math).
 - **`NetherComplex(role)`** — fortress and bastion share one grid
   (27 / 4 / salt 30084232); a second roll decides the occupant:
   `carverSeed = multA·chunkX ^ multB·chunkZ ^ worldSeed` (multA/multB from
@@ -94,11 +98,20 @@ and running the reference implementation (trimmed, in scratchpad, not committed)
 seeds {42, 69420, −3849722879} — plus property tests (cell containment, determinism,
 fortress/bastion partition of the shared grid).
 
-Known fidelity gaps vs vanilla (documented, follow-up candidates): pillager outposts
-have an extra `nextInt(5)==0` rarity gate in vanilla (neither the reference mod nor we
-apply it → over-reports outposts); end cities have a ≥1008-block distance floor (the
-biome check masks most of it); cubiomes models 1.18+ fortresses as biome-gated rather
-than rolled. All three are validated against a real server before changing.
+Known fidelity gaps vs vanilla (documented, follow-up candidates): end cities have a
+≥1008-block distance floor (the biome check masks most of it); cubiomes models 1.18+
+fortresses as biome-gated rather than rolled. Both are validated against a real server
+before changing.
+
+Closed gap (2026-07): pillager outposts. Vanilla applies two extra gates after the
+random-spread candidate — the `legacy_type_1` rarity gate (`Random((chunkX>>4 ^
+(chunkZ>>4)<<4) ^ worldSeed)`, one discarded `nextInt()`, then `nextInt(5)==0`, i.e.
+frequency 0.2; salt unused) and a 10-chunk (Chebyshev) exclusion zone around *village
+placement candidates* (spacing 34 / sep 8 / salt 10387312, biome not consulted). Both
+are now modeled in `Placement.Grid` (`frequency`, `exclusionZone`) and applied by
+`SeedStructureLocator.locateGrid`. Field-verified on a real server world: all three
+observed phantom markers failed the rarity gate and the one confirmed outpost passed
+both gates; golden vectors regenerated with the gates applied.
 
 ### 2.3 Settings / AreaSpec / SearchArea
 
@@ -182,7 +195,7 @@ runtime-fetch replacement plan tracked in issue #2) in
 | --- | --- |
 | Placement constants drift in future MC versions | catalog cross-checked against cubiomes; single source in `StructureCatalog`; golden-vector tests pin behavior |
 | Stronghold positions off by ≤ ~112 blocks (no biome nudge) | documented; markers still land on the map; revisit if /tp precision matters |
-| Outpost over-reporting (missing vanilla rarity gate) | verify on a real server vs /locate, then decide (issue #3 notes) |
+| Outpost over-reporting (missing vanilla rarity gate) | RESOLVED: field-verified on a real server (3 phantom markers all failed the gate, the confirmed outpost passed); locator now models the legacy_type_1 rarity gate (frequency 0.2) and the 10-chunk village exclusion zone |
 | BlueMap web app slows with many markers | zoom gating (`maxDistance`), buried treasure opt-in (thousands of markers), configurable search areas, WARN above ~5000 markers per world |
 | `vanillaBiomeProvider` failures on exotic worlds | try/catch → validate-all + one WARN (Paper #9394) |
 | paper-api/bluemap-api unavailable in sandbox | module split; CI compiles plugin; core TDD offline |

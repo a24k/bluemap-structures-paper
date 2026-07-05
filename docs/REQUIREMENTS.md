@@ -137,8 +137,10 @@ Fidelity gaps of the seed-math locator vs vanilla, to be checked against a real 
 (`/locate` spot checks) before deciding whether to model them (see DESIGN §2.2):
 
 - Stronghold positions are the pre-biome-nudge geometry (≤ ~112 blocks off).
-- Pillager outposts: vanilla applies an extra `nextInt(5)==0` rarity gate that neither
-  the reference mod nor this implementation models → expected over-reporting.
+- Pillager outposts — RESOLVED (2026-07): the predicted over-reporting was confirmed
+  on a real server (three phantom markers all failed vanilla's `nextInt(5)==0` rarity
+  gate; the one confirmed outpost passed). The locator now models the rarity gate and
+  the 10-chunk village exclusion zone (see DESIGN §2.2).
 - Fortress/bastion occupancy: modeled as the classic 2-of-5 carver-seed roll; cubiomes
   treats 1.18+ fortresses as biome-gated instead.
 - End cities: vanilla enforces a ≥1008-block distance floor; our biome check masks

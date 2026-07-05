@@ -21,6 +21,10 @@ import org.junit.jupiter.api.Test;
  * buried treasure). The generator is the ground truth for the algorithm shape; this test
  * proves our implementation reproduces its output exactly (order-insensitive set
  * comparison).
+ *
+ * <p>{@code pillager_outpost} vectors additionally exercise the {@code legacy_type_1} rarity
+ * gate (frequency 0.2) and the 10-chunk village exclusion zone; they were cross-validated
+ * against a real server world, not just the throwaway generator.
  */
 class SeedStructureLocatorGoldenVectorTest {
 
@@ -30,6 +34,11 @@ class SeedStructureLocatorGoldenVectorTest {
   @Test
   void villageSeed42() {
     assertGolden("village", 42L, 3000, VILLAGE_42);
+  }
+
+  @Test
+  void pillagerOutpostSeed42() {
+    assertGolden("pillager_outpost", 42L, 3000, PILLAGER_OUTPOST_42);
   }
 
   @Test
@@ -78,6 +87,11 @@ class SeedStructureLocatorGoldenVectorTest {
   }
 
   @Test
+  void pillagerOutpostSeed69420() {
+    assertGolden("pillager_outpost", 69420L, 3000, PILLAGER_OUTPOST_69420);
+  }
+
+  @Test
   void monumentSeed69420() {
     assertGolden("monument", 69420L, 3000, MONUMENT_69420);
   }
@@ -120,6 +134,11 @@ class SeedStructureLocatorGoldenVectorTest {
   @Test
   void villageSeedneg3849722879() {
     assertGolden("village", -3849722879L, 3000, VILLAGE_NEG3849722879);
+  }
+
+  @Test
+  void pillagerOutpostSeedneg3849722879() {
+    assertGolden("pillager_outpost", -3849722879L, 3000, PILLAGER_OUTPOST_NEG3849722879);
   }
 
   @Test
@@ -203,6 +222,11 @@ class SeedStructureLocatorGoldenVectorTest {
       1928, -2904, 1704, -2520, 1960, -2056, 1640, -1512, 2040, -1016, 1704, -440, 2040, 120, 1688, 792, 1912, 1208, 1896, 1672,
       2008, 2520, 1672, 2728, 2200, -2344, 2232, -2056, 2520, -1528, 2312, -680, 2264, -520, 2552, 200, 2312, 728, 2488, 1416,
       2216, 1928, 2248, 2296, 2968, -2488, 2760, -2024, 2936, -1272, 2952, -888, 2824, -312, 2744, 776, 2760, 2040, 2872, 2520
+  };
+
+  private static final int[] PILLAGER_OUTPOST_42 = {
+      -2952, 1768, -1752, -2728, -888, 2232, -472, 568, -232, 1096, -200, 2696, 376, 312, 520, -936, 1336, -1736, 1384, -728,
+      1256, 2312, 1544, -2920, 1624, 2936, 2264, 2824, 2680, -2440
   };
 
   private static final int[] MONUMENT_42 = {
@@ -348,6 +372,11 @@ class SeedStructureLocatorGoldenVectorTest {
       2808, -2328, 2808, -1896, 2744, -1544, 2888, -936, 2856, -520, 2728, 568, 3000, 1720, 3000, 2312, 2872, 2728
   };
 
+  private static final int[] PILLAGER_OUTPOST_69420 = {
+      -2904, -1000, -1208, 1640, -1288, 2104, -936, -1736, 872, -1784, 856, -744, 1224, 2168, 1704, 1656, 2360, -1256, 2200, -744,
+      2104, 312, 2264, 1144
+  };
+
   private static final int[] MONUMENT_69420 = {
       -2888, -2664, -2760, -2376, -2808, -1816, -2760, -1320, -2712, -776, -2872, -472, -2808, 312, -2744, 728, -2904, 1032, -2888, 1832,
       -2744, 2376, -2744, 2824, -2344, -2680, -2344, -2328, -2472, -1704, -2424, -1304, -2344, -968, -2168, -296, -2328, 136, -2328, 616,
@@ -489,6 +518,11 @@ class SeedStructureLocatorGoldenVectorTest {
       2040, 1176, 1848, 1944, 1640, 2184, 1896, 2840, 2200, -2696, 2472, -1928, 2408, -1480, 2296, -776, 2376, -200, 2376, 152,
       2584, 600, 2360, 1112, 2456, 1720, 2424, 2328, 2552, 2856, 2744, -216, 2968, 232, 2728, 600, 2888, 1496, 2920, 2040,
       2952, 2552
+  };
+
+  private static final int[] PILLAGER_OUTPOST_NEG3849722879 = {
+      -2808, -936, -2856, 2584, -2184, 2856, -1688, -2712, -1736, 1688, -1208, -312, -1320, 2088, -680, -2328, -1000, 248, 248, 2840,
+      568, 312, 1336, -2760, 2200, 1384, 2712, -2280, 2904, -1960
   };
 
   private static final int[] MONUMENT_NEG3849722879 = {
