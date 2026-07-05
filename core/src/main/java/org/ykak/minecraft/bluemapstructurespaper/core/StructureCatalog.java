@@ -17,20 +17,32 @@ import java.util.Optional;
  * on modern versions.
  *
  * <p>Zoom tiers: 5000 = always visible, 1000 = dense layer, only shown zoomed-in.
+ *
+ * <p>{@code pillager_outpost}'s rarity gate ({@code frequency} 0.2) and its exclusion zone
+ * against the villages structure set come from vanilla's structure-set data (and the 1.14
+ * {@code legacy_type_1} code it preserves), which cubiomes models in {@code
+ * isViableStructurePos}, not {@code getStructureConfig}.
  */
 public final class StructureCatalog {
 
   private static final int WIDE = 5000;
   private static final int ZOOMED_IN = 1000;
 
+  /**
+   * Shared random-spread grid for the villages structure set (spacing 34 / separation 8 / salt
+   * 10387312, LINEAR spread) — also used to model {@code pillager_outpost}'s vanilla
+   * exclusion zone against villages (see {@link Placement.ExclusionZone}).
+   */
+  private static final Placement.Grid VILLAGE_GRID =
+      new Placement.Grid(34, 8, 10387312L, Placement.Spread.LINEAR);
+
   private static final List<StructureLayer> LAYERS =
       List.of(
-          linear(
+          new StructureLayer(
               "village",
               "Villages",
-              34,
-              8,
-              10387312,
+              Dimension.OVERWORLD,
+              VILLAGE_GRID,
               List.of(
                   "minecraft:village_plains",
                   "minecraft:village_desert",
@@ -44,7 +56,8 @@ public final class StructureCatalog {
                   "has_structure/village_snowy",
                   "has_structure/village_taiga"),
               WIDE,
-              "village.png"),
+              "village.png",
+              true),
           linear(
               "desert_pyramid",
               "Desert Pyramids",
@@ -86,16 +99,22 @@ public final class StructureCatalog {
               List.of("has_structure/igloo"),
               WIDE,
               "igloo.png"),
-          linear(
+          new StructureLayer(
               "pillager_outpost",
               "Pillager Outposts",
-              32,
-              8,
-              165745296,
+              Dimension.OVERWORLD,
+              new Placement.Grid(
+                  32,
+                  8,
+                  165745296L,
+                  Placement.Spread.LINEAR,
+                  0.2f,
+                  new Placement.ExclusionZone(VILLAGE_GRID, 10)),
               List.of("minecraft:pillager_outpost"),
               List.of("has_structure/pillager_outpost"),
               WIDE,
-              "outpost.png"),
+              "outpost.png",
+              true),
           linear(
               "ancient_city",
               "Ancient Cities",

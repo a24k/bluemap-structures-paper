@@ -85,6 +85,74 @@ class SeedStructureLocatorTest {
     }
   }
 
+  // ---- pillager outpost rarity gate + village exclusion zone ------------------------------
+
+  @Test
+  void frequencyGateSuppressesLegacyType1FailuresOnly() {
+    // Verified against a real 1.21-line server world: these three grid candidates fail the
+    // legacy_type_1 frequency gate (frequency 0.2) and must not be reported by the real
+    // catalog layer, but must reappear once the gate is disabled (frequency 1.0f, no
+    // exclusion zone) - proving the underlying grid candidate is correct and only the gate
+    // removes them.
+    StructureLayer outpost = StructureCatalog.byId("pillager_outpost").orElseThrow();
+    StructureLayer noGate = withGrid(outpost, new Placement.Grid(32, 8, 165745296L, Placement.Spread.LINEAR));
+
+    int[][] gateFailures = {{-1496, -888}, {-1320, -360}, {-1192, 184}};
+
+    Set<Long> found = toSet(SeedStructureLocator.locate(outpost, 42L, 2000, ALWAYS_VALID));
+    Set<Long> foundNoGate = toSet(SeedStructureLocator.locate(noGate, 42L, 2000, ALWAYS_VALID));
+    for (int[] xz : gateFailures) {
+      long packed = pack(xz[0], xz[1]);
+      assertFalse(found.contains(packed), "real layer must not report " + xz[0] + "," + xz[1]);
+      assertTrue(foundNoGate.contains(packed), "gate-disabled layer must report " + xz[0] + "," + xz[1]);
+    }
+  }
+
+  @Test
+  void frequencyGatePassLetsACandidateThrough() {
+    StructureLayer outpost = StructureCatalog.byId("pillager_outpost").orElseThrow();
+    Set<Long> found = toSet(SeedStructureLocator.locate(outpost, 42L, 2000, ALWAYS_VALID));
+    assertTrue(found.contains(pack(376, 312)));
+  }
+
+  @Test
+  void villageExclusionZoneSuppressesAGateSurvivingCandidate() {
+    // (216,-296) is chunk (13,-19); it passes the rarity gate but a village placement
+    // candidate lands at chunk (10,-27), Chebyshev distance 8 <= 10, so vanilla suppresses it.
+    StructureLayer outpost = StructureCatalog.byId("pillager_outpost").orElseThrow();
+    StructureLayer noExclusion =
+        withGrid(
+            outpost,
+            new Placement.Grid(32, 8, 165745296L, Placement.Spread.LINEAR, 0.2f, null));
+
+    long packed = pack(216, -296);
+    Set<Long> found = toSet(SeedStructureLocator.locate(outpost, 42L, 2000, ALWAYS_VALID));
+    Set<Long> foundNoExclusion = toSet(SeedStructureLocator.locate(noExclusion, 42L, 2000, ALWAYS_VALID));
+    assertFalse(found.contains(packed), "real layer must not report village-excluded candidate");
+    assertTrue(foundNoExclusion.contains(packed), "exclusion-disabled layer must report the candidate");
+  }
+
+  @Test
+  void fourArgGridEqualsSixArgFormWithDefaults() {
+    Placement.Grid fourArg = new Placement.Grid(34, 8, 10387312L, Placement.Spread.LINEAR);
+    Placement.Grid sixArg = new Placement.Grid(34, 8, 10387312L, Placement.Spread.LINEAR, 1.0f, null);
+    assertEquals(sixArg, fourArg);
+  }
+
+  /** Copies {@code layer} with a different {@link Placement.Grid}, for gate-toggling tests. */
+  private static StructureLayer withGrid(StructureLayer layer, Placement.Grid grid) {
+    return new StructureLayer(
+        layer.id(),
+        layer.displayName(),
+        layer.dimension(),
+        grid,
+        layer.structureKeys(),
+        layer.biomeTagIds(),
+        layer.zoomMaxDistance(),
+        layer.iconFile(),
+        layer.defaultEnabled());
+  }
+
   // ---- nether complex ---------------------------------------------------------------------
 
   @Test
@@ -302,8 +370,12 @@ class SeedStructureLocatorTest {
   private static Set<Long> toSet(List<FoundStructure> found) {
     Set<Long> set = new HashSet<>();
     for (FoundStructure f : found) {
-      set.add((((long) f.x()) << 32) ^ (f.z() & 0xFFFFFFFFL));
+      set.add(pack(f.x(), f.z()));
     }
     return set;
+  }
+
+  private static long pack(int x, int z) {
+    return (((long) x) << 32) ^ (z & 0xFFFFFFFFL);
   }
 }

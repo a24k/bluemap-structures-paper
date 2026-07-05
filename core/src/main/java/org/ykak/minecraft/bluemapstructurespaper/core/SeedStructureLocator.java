@@ -106,11 +106,67 @@ public final class SeedStructureLocator {
           int[] chunk =
               cellChunk(
                   regionX, regionZ, spacing, grid.separationChunks(), grid.salt(), grid.spread(), worldSeed);
-          addCandidate(results, seen, key, chunk[0], chunk[1], 8, areas, layer, check);
+          int chunkX = chunk[0];
+          int chunkZ = chunk[1];
+          if (grid.frequency() < 1.0f && !passesFrequencyGate(chunkX, chunkZ, worldSeed, grid.frequency())) {
+            continue;
+          }
+          if (grid.exclusionZone() != null
+              && isInExclusionZone(chunkX, chunkZ, worldSeed, grid.exclusionZone())) {
+            continue;
+          }
+          addCandidate(results, seen, key, chunkX, chunkZ, 8, areas, layer, check);
         }
       }
     }
     return results;
+  }
+
+  /**
+   * Vanilla's data-driven {@code frequency_reduction_method: legacy_type_1} rarity gate (see
+   * {@link Placement.Grid#frequency()}). Returns whether the candidate survives.
+   */
+  private static boolean passesFrequencyGate(int chunkX, int chunkZ, long worldSeed, float frequency) {
+    int i = chunkX >> 4;
+    int j = chunkZ >> 4;
+    Random rand = new Random((long) (i ^ (j << 4)) ^ worldSeed);
+    rand.nextInt();
+    return rand.nextInt(Math.round(1.0f / frequency)) == 0;
+  }
+
+  /**
+   * Whether {@code (chunkX, chunkZ)} lies within {@link Placement.ExclusionZone#chunkCount()}
+   * chunks (Chebyshev distance) of any placement candidate of {@code zone.otherGrid()}. Widens
+   * the scanned region by one extra cell on each side for safety.
+   */
+  private static boolean isInExclusionZone(
+      int chunkX, int chunkZ, long worldSeed, Placement.ExclusionZone zone) {
+    Placement.Grid otherGrid = zone.otherGrid();
+    int spacing = otherGrid.spacingChunks();
+    int count = zone.chunkCount();
+    int regionMinX = Math.floorDiv(chunkX - count, spacing) - 1;
+    int regionMaxX = Math.floorDiv(chunkX + count, spacing) + 1;
+    int regionMinZ = Math.floorDiv(chunkZ - count, spacing) - 1;
+    int regionMaxZ = Math.floorDiv(chunkZ + count, spacing) + 1;
+    for (int regionX = regionMinX; regionX <= regionMaxX; regionX++) {
+      for (int regionZ = regionMinZ; regionZ <= regionMaxZ; regionZ++) {
+        int[] candidate =
+            cellChunk(
+                regionX,
+                regionZ,
+                spacing,
+                otherGrid.separationChunks(),
+                otherGrid.salt(),
+                otherGrid.spread(),
+                worldSeed);
+        int dx = Math.abs(candidate[0] - chunkX);
+        int dz = Math.abs(candidate[1] - chunkZ);
+        if (Math.max(dx, dz) <= count) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   /** Random-spread core: one placement attempt per {@code spacing}-chunk-sided region cell. */
