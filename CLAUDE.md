@@ -58,8 +58,9 @@ Rules that made delegated implementation work well here; keep following them:
   matching existing history.
 - Target Minecraft version is pinned ONLY in `gradle/libs.versions.toml`
   (`paper-api`). Do not hardcode it elsewhere.
-- New structure layers go in `StructureCatalog` (core) + an icon in
-  `plugin/src/main/resources/icons/` + a row in the DESIGN.md table.
+- New structure layers go in `StructureCatalog` (core) + a client-jar texture path in
+  `IconSources` (core) + a row in the DESIGN.md table. No artwork is bundled — icons
+  are generated at runtime from Mojang's client assets (DESIGN §5).
 
 ## Placement-fidelity playbook
 

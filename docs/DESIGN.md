@@ -41,7 +41,7 @@ record StructureLayer(
     List<String> structureKeys,   // registry keys (metadata / cache identity)
     List<String> biomeTagIds,     // has_structure/* tags; empty = no biome restriction
     int zoomMaxDistance,          // 5000 always visible / 1000 zoomed-in only
-    String iconFile, boolean defaultEnabled)
+    boolean defaultEnabled)
 ```
 
 Layer set (spacing/separation/salt omitted here — the catalog source is authoritative):
@@ -133,7 +133,21 @@ Malformed entries are skipped with warnings; an unusable list falls back to the
 default (top level) or drops the override (world section). All problems are collected
 into `warnings()` for the plugin to log.
 
-### 2.4 MarkerData
+### 2.4 IconSources / IconComposer
+
+The icon pipeline's pure half (issue #2 — no bundled artwork):
+
+- `IconSources.texturePath(layerId)` — the design artifact: a fixed table mapping each
+  layer to one texture path inside the Minecraft **client jar** (stable 16×16
+  item/block textures only, e.g. `assets/minecraft/textures/item/ender_eye.png` for
+  strongholds; entity-texture face crops were deliberately avoided as too fragile).
+  Unit test asserts every catalog layer has an entry.
+- `IconComposer.compose(BufferedImage) → 22×22 TYPE_INT_ARGB` — crops vertical
+  animation strips to their top frame, scales oversized frames down (nearest-neighbor,
+  aspect preserved), centers the frame on a transparent 22×22 canvas (16×16 lands at
+  offset (3,3), matching the previous icons' size and the (11,11) marker anchor).
+
+### 2.5 MarkerData
 
 Unchanged: marker/set ids (`bmsp-<layer>-<x>-<z>`, `structures-<layer>`), labels,
 popup HTML with copyable `/tp` (HTML-escaped), `defaultY` per dimension (63 OW / 64
@@ -155,10 +169,14 @@ ScanCoordinator.start — per world with a Dimension and a BlueMap map:
  │        WARN once for worlds.<name> overrides matching no loaded world
  ├─ ASYNC (runTaskAsynchronously): SeedStructureLocator.locate per enabled layer
  │        (BiomeProvider#getBiome is documented thread-safe); log totals + elapsed;
- │        WARN when a world exceeds ~5000 markers (web-app responsiveness guard)
- └─ MAIN (runTask): MarkerPublisher.publish — icons via WebApp#createImage,
+ │        WARN when a world exceeds ~5000 markers (web-app responsiveness guard);
+ │        then ClientAssetIcons.ensureIcons() — memoized, so N worlds trigger at
+ │        most one asset fetch (see §5)
+ └─ MAIN (runTask): MarkerPublisher.publish — generated icon PNGs uploaded via
+          AssetStorage (version-keyed asset names, reused across restarts),
           MarkerSet per layer per map, POIMarker with icon anchor (11,11),
-          maxDistance zoom gating, /tp popup
+          maxDistance zoom gating, /tp popup; layers whose icon is missing fall
+          back to BlueMap's default POI icon
 ```
 
 Config is loaded from the user's file directly (`YamlConfiguration.loadConfiguration`)
@@ -185,9 +203,29 @@ which would make the bundled `areas` key shadow a legacy user config that only s
 
 ## 5. Icons
 
-21 PNGs from mc-bluemap-structures (declared MIT; provenance caveat and the
-runtime-fetch replacement plan tracked in issue #2) in
-`plugin/src/main/resources/icons/`, uploaded through the BlueMap web app at runtime.
+No artwork is bundled (issue #2 — the previously bundled mc-bluemap-structures set had
+undocumented provenance). Icons are generated at first startup from Mojang's own
+client assets, which each server downloads directly from Mojang:
+
+```
+ClientAssetIcons.ensureIcons()   (plugin, async thread, memoized per server session)
+ ├─ fast path: plugins/BlueMapStructuresPaper/icons/<mcVersion>/<layerId>.png all
+ │  present → no network I/O
+ ├─ resolve Bukkit.getMinecraftVersion() via piston-meta.mojang.com
+ │  (version_manifest_v2.json → version JSON → downloads.client.{url,sha1}; Gson,
+ │  bundled with Paper)
+ ├─ download the client jar once → assets/client-<mcVersion>.jar (SHA-1 verified,
+ │  atomic move, kept as cache)
+ └─ per layer: read IconSources.texturePath entry from the jar →
+    IconComposer.compose → write the 22×22 PNG into icons/<mcVersion>/
+```
+
+Failure semantics: any network/IO/parse problem logs ONE warning and returns whatever
+icons already exist on disk; affected markers use BlueMap's default POI icon and the
+fetch is retried on the next startup. `MarkerPublisher` uploads the generated PNGs
+into each map's `AssetStorage` under `bmsp-<mcVersion>-<layerId>.png` — version-keyed
+so a server upgrade refreshes the artwork despite AssetStorage's reuse-if-exists
+behavior.
 
 ## 6. Risks & mitigations
 
@@ -198,4 +236,6 @@ runtime-fetch replacement plan tracked in issue #2) in
 | Outpost over-reporting (missing vanilla rarity gate) | RESOLVED: field-verified on a real server (3 phantom markers all failed the gate, the confirmed outpost passed); locator now models the legacy_type_1 rarity gate (frequency 0.2) and the 10-chunk village exclusion zone |
 | BlueMap web app slows with many markers | zoom gating (`maxDistance`), buried treasure opt-in (thousands of markers), configurable search areas, WARN above ~5000 markers per world |
 | `vanillaBiomeProvider` failures on exotic worlds | try/catch → validate-all + one WARN (Paper #9394) |
+| Offline server / piston-meta unreachable → no icons | one WARN, markers fall back to BlueMap's default POI icon, fetch retried next startup; client jar + PNGs cached after first success |
+| Mojang renames a texture path in a future MC version | per-layer WARN + default-icon fallback (never fatal); `IconSources` is the single table to fix |
 | paper-api/bluemap-api unavailable in sandbox | module split; CI compiles plugin; core TDD offline |
