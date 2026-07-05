@@ -4,7 +4,7 @@ plugins {
 
 allprojects {
   group = "org.ykak.minecraft.bluemapstructurespaper"
-  version = "0.4.0-SNAPSHOT"
+  version = "0.4.0"
 }
 
 subprojects {
