@@ -9,12 +9,15 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.imageio.ImageIO;
+import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.ykak.minecraft.bluemapstructurespaper.core.FoundStructure;
 import org.ykak.minecraft.bluemapstructurespaper.core.MarkerData;
@@ -24,8 +27,10 @@ import org.ykak.minecraft.bluemapstructurespaper.core.StructureLayer;
 
 /**
  * Builds BlueMap marker sets (one toggleable set per layer per map) from scan results.
- * Icons are stored per map through {@link AssetStorage} (the non-deprecated replacement
- * for {@code WebApp#createImage}); existing assets are reused across restarts.
+ * Icons are generated at runtime from the Minecraft client jar (see
+ * {@link ClientAssetIcons}) and stored per map through {@link AssetStorage} (the
+ * non-deprecated replacement for {@code WebApp#createImage}); existing assets are reused
+ * across restarts.
  */
 final class MarkerPublisher {
 
@@ -41,12 +46,16 @@ final class MarkerPublisher {
   }
 
   /** Main thread only. */
-  void publish(BlueMapAPI api, World world, Map<String, List<FoundStructure>> resultsByLayer) {
+  void publish(
+      BlueMapAPI api,
+      World world,
+      Map<String, List<FoundStructure>> resultsByLayer,
+      Map<String, Path> iconFiles) {
     api.getWorld(world)
         .ifPresent(
             blueMapWorld -> {
               for (BlueMapMap map : blueMapWorld.getMaps()) {
-                publishToMap(map, resultsByLayer);
+                publishToMap(map, resultsByLayer, iconFiles);
               }
             });
   }
@@ -59,8 +68,11 @@ final class MarkerPublisher {
     publishedSetIds.clear();
   }
 
-  private void publishToMap(BlueMapMap map, Map<String, List<FoundStructure>> resultsByLayer) {
-    Map<String, String> iconAddresses = storeIcons(map);
+  private void publishToMap(
+      BlueMapMap map,
+      Map<String, List<FoundStructure>> resultsByLayer,
+      Map<String, Path> iconFiles) {
+    Map<String, String> iconAddresses = storeIcons(map, iconFiles);
 
     for (Map.Entry<String, List<FoundStructure>> entry : resultsByLayer.entrySet()) {
       StructureLayer layer = StructureCatalog.byId(entry.getKey()).orElse(null);
@@ -94,26 +106,32 @@ final class MarkerPublisher {
     }
   }
 
-  /** Writes bundled icons into the map's asset storage (skipping ones already there). */
-  private Map<String, String> storeIcons(BlueMapMap map) {
+  /**
+   * Writes generated icons (see {@link ClientAssetIcons}) into the map's asset storage
+   * (skipping ones already there). Asset names are keyed by the running Minecraft version
+   * so an icon set generated for one version is not reused after a server upgrade.
+   */
+  private Map<String, String> storeIcons(BlueMapMap map, Map<String, Path> iconFiles) {
     Map<String, String> addresses = new HashMap<>();
     AssetStorage storage = map.getAssetStorage();
+    String mcVersion = Bukkit.getMinecraftVersion();
     for (StructureLayer layer : StructureCatalog.layers()) {
       if (!settings.isLayerEnabled(layer.id())) {
         continue;
       }
-      String assetName = "bmsp-" + layer.iconFile();
+      Path iconFile = iconFiles.get(layer.id());
+      if (iconFile == null) {
+        continue;
+      }
+      String assetName = "bmsp-" + mcVersion + "-" + layer.id() + ".png";
       try {
         if (!storage.assetExists(assetName)) {
-          try (InputStream stream = plugin.getResource("icons/" + layer.iconFile())) {
-            if (stream == null) {
-              plugin.getLogger().warning("Missing bundled icon: " + layer.iconFile());
-              continue;
-            }
-            BufferedImage image = ImageIO.read(stream);
-            try (OutputStream out = storage.writeAsset(assetName)) {
-              ImageIO.write(image, "png", out);
-            }
+          BufferedImage image;
+          try (InputStream in = Files.newInputStream(iconFile)) {
+            image = ImageIO.read(in);
+          }
+          try (OutputStream out = storage.writeAsset(assetName)) {
+            ImageIO.write(image, "png", out);
           }
         }
         addresses.put(layer.id(), storage.getAssetUrl(assetName));
@@ -121,7 +139,7 @@ final class MarkerPublisher {
         plugin
             .getLogger()
             .warning(
-                "Could not store icon " + layer.iconFile() + " for map '" + map.getId()
+                "Could not store icon for layer '" + layer.id() + "' on map '" + map.getId()
                     + "': " + e.getMessage());
       }
     }

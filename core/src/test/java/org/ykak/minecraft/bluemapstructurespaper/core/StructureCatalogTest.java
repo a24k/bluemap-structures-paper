@@ -169,7 +169,7 @@ class StructureCatalogTest {
       assertTrue(
           layer.zoomMaxDistance() == 1000 || layer.zoomMaxDistance() == 5000,
           layer.id() + " zoom " + layer.zoomMaxDistance());
-      assertTrue(layer.iconFile().endsWith(".png"), layer.id());
+      assertTrue(IconSources.texturePath(layer.id()).isPresent(), layer.id());
       assertFalse(layer.displayName().isBlank(), layer.id());
     }
     // dense layers are zoom-gated

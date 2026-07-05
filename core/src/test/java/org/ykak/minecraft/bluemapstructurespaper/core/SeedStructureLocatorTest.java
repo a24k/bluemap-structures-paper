@@ -149,7 +149,6 @@ class SeedStructureLocatorTest {
         layer.structureKeys(),
         layer.biomeTagIds(),
         layer.zoomMaxDistance(),
-        layer.iconFile(),
         layer.defaultEnabled());
   }
 
