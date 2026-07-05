@@ -37,20 +37,32 @@ A Paper-API reimplementation of the Fabric mod
 ## Install
 
 1. Drop `BlueMapStructuresPaper-x.y.z.jar` into `plugins/`.
-2. Restart. On first start the plugin scans each mapped world (progress in console)
-   and registers the marker layers when done. Subsequent restarts reuse the cache.
+2. Restart. On every start the plugin recomputes the markers from each mapped world's
+   seed (milliseconds per world; totals in console) and registers the marker layers.
 
 ## Configuration
 
 `plugins/BlueMapStructuresPaper/config.yml`:
 
 ```yaml
-radius-blocks: 5000        # half-side of the scanned square around (0,0)
+areas:                     # scanned squares (union of all entries, deduplicated)
+  - center: origin         # origin (0,0) | spawn | {x: <block>, z: <block>}
+    radius-blocks: 5000    # half-side of the square
+
+#worlds:                   # per-world overrides (replace the default list entirely)
+#  resource:
+#    areas:
+#      - center: spawn
+#        radius-blocks: 2000
+
 layers:                    # one toggle per structure layer
   village: true
   # ...
   buried_treasure: false   # opt-in: ~0.01/chunk → thousands of markers at radius 5000
 ```
+
+The legacy top-level `radius-blocks: 5000` form still works as shorthand for a single
+origin-centered area.
 
 Markers are recomputed from the seed on every start (it costs milliseconds), so config
 changes apply on the next restart — there is no cache to clear.

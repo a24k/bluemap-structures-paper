@@ -4,9 +4,34 @@
 # on the next server restart (or /reload of this plugin), since the scan runs once
 # per BlueMap enable.
 
-# Half-side, in blocks, of the square around world origin (0,0) that is scanned for
-# structures.
-radius-blocks: 5000
+# Search areas. A structure is shown if it falls inside ANY listed square (union;
+# overlaps are deduplicated). Each entry takes:
+#   center:        origin        — world origin (0,0)
+#                  spawn         — the world's spawn point (resolved per world)
+#                  {x: …, z: …}  — explicit block coordinates
+#   radius-blocks: half-side of the square in blocks (256..1000000, default 5000)
+areas:
+  - center: origin
+    radius-blocks: 5000
+
+# Per-world overrides, keyed by world name. An override REPLACES the default 'areas'
+# list entirely for that world. Stronghold rings stay anchored at (0,0) by vanilla
+# definition — areas only filter which ring positions are shown.
+#worlds:
+#  world_the_end:
+#    areas:
+#      - center: origin
+#        radius-blocks: 3000
+#  resource:
+#    areas:
+#      - center: spawn
+#        radius-blocks: 2000
+#      - center: {x: -12000, z: 8000}
+#        radius-blocks: 2000
+
+# Legacy single-radius form — equivalent to one origin-centered area. Still honored,
+# but ignored (with a warning) if 'areas' is also set.
+#radius-blocks: 5000
 
 # Per-layer toggles. Each enabled layer becomes its own toggleable marker layer in the
 # BlueMap sidebar.
@@ -32,6 +57,6 @@ layers:
   # Buried treasure spawns on a per-chunk grid (~0.01 probability per chunk). Scanning
   # it is no longer a time cost — the cost is marker count: at radius 5000 this can
   # place thousands of markers, which can slow the BlueMap web app. It stays
-  # zoom-gated when enabled; use a smaller radius if the web app feels sluggish.
+  # zoom-gated when enabled; use smaller search areas if the web app feels sluggish.
   buried_treasure: false
   stronghold: true

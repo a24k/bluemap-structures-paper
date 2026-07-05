@@ -161,6 +161,95 @@ class SeedStructureLocatorTest {
     }
   }
 
+  // ---- search areas (issue #4) ----------------------------------------------------------------
+
+  @Test
+  void offCenterAreaEqualsOriginScanFilteredByMembership() {
+    StructureLayer village = StructureCatalog.byId("village").orElseThrow();
+    SearchArea area = new SearchArea(4000, -3000, 2000);
+
+    Set<Long> offCenter =
+        toSet(SeedStructureLocator.locate(village, 42L, List.of(area), ALWAYS_VALID));
+    Set<Long> filtered = new HashSet<>();
+    for (FoundStructure f : SeedStructureLocator.locate(village, 42L, 8000, ALWAYS_VALID)) {
+      if (area.contains(f.x(), f.z())) {
+        filtered.add((((long) f.x()) << 32) ^ (f.z() & 0xFFFFFFFFL));
+      }
+    }
+
+    assertFalse(offCenter.isEmpty());
+    assertEquals(filtered, offCenter);
+  }
+
+  @Test
+  void overlappingAreasProduceTheUnionWithoutDuplicates() {
+    StructureLayer village = StructureCatalog.byId("village").orElseThrow();
+    SearchArea a = new SearchArea(0, 0, 1000);
+    SearchArea b = new SearchArea(500, 500, 1000);
+
+    List<FoundStructure> combined =
+        SeedStructureLocator.locate(village, 42L, List.of(a, b), ALWAYS_VALID);
+    Set<Long> union = toSet(SeedStructureLocator.locate(village, 42L, List.of(a), ALWAYS_VALID));
+    union.addAll(toSet(SeedStructureLocator.locate(village, 42L, List.of(b), ALWAYS_VALID)));
+
+    assertEquals(combined.size(), toSet(combined).size(), "no duplicate positions");
+    assertEquals(union, toSet(combined));
+  }
+
+  @Test
+  void disjointAreasProduceTheUnionOfBothScans() {
+    StructureLayer village = StructureCatalog.byId("village").orElseThrow();
+    SearchArea near = new SearchArea(0, 0, 800);
+    SearchArea far = new SearchArea(4000, 4000, 800);
+
+    Set<Long> combined =
+        toSet(SeedStructureLocator.locate(village, 42L, List.of(near, far), ALWAYS_VALID));
+    Set<Long> union = toSet(SeedStructureLocator.locate(village, 42L, List.of(near), ALWAYS_VALID));
+    union.addAll(toSet(SeedStructureLocator.locate(village, 42L, List.of(far), ALWAYS_VALID)));
+
+    assertEquals(union, combined);
+  }
+
+  @Test
+  void perChunkPlacementRespectsOffCenterAreas() {
+    StructureLayer treasure = StructureCatalog.byId("buried_treasure").orElseThrow();
+    SearchArea area = new SearchArea(300, -300, 256);
+
+    List<FoundStructure> found =
+        SeedStructureLocator.locate(treasure, 42L, List.of(area), ALWAYS_VALID);
+    assertFalse(found.isEmpty());
+    for (FoundStructure f : found) {
+      assertTrue(area.contains(f.x(), f.z()), "out of area: " + f.x() + "," + f.z());
+    }
+
+    Set<Long> filtered = new HashSet<>();
+    for (FoundStructure f : SeedStructureLocator.locate(treasure, 42L, 1000, ALWAYS_VALID)) {
+      if (area.contains(f.x(), f.z())) {
+        filtered.add((((long) f.x()) << 32) ^ (f.z() & 0xFFFFFFFFL));
+      }
+    }
+    assertEquals(filtered, toSet(found));
+  }
+
+  @Test
+  void strongholdRingsStayAnchoredAtOriginAndAreasOnlyFilter() {
+    StructureLayer stronghold = StructureCatalog.byId("stronghold").orElseThrow();
+    // Golden vectors (seed 42, radius 3000): (-312,-2248), (1688,680), (-1384,1096).
+    SearchArea around = new SearchArea(1688, 680, 300);
+
+    List<FoundStructure> found =
+        SeedStructureLocator.locate(stronghold, 42L, List.of(around), ALWAYS_VALID);
+    assertEquals(1, found.size());
+    assertEquals(1688, found.get(0).x());
+    assertEquals(680, found.get(0).z());
+  }
+
+  @Test
+  void emptyAreaListYieldsNoResults() {
+    StructureLayer village = StructureCatalog.byId("village").orElseThrow();
+    assertTrue(SeedStructureLocator.locate(village, 42L, List.of(), ALWAYS_VALID).isEmpty());
+  }
+
   // ---- BiomeCheck contract --------------------------------------------------------------------
 
   @Test

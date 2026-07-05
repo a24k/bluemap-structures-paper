@@ -29,6 +29,12 @@ watch CI for the plugin module.
 
 Rules that made delegated implementation work well here; keep following them:
 
+- **The main session orchestrates; it does not write code itself** (owner's standing
+  request, 2026-07). Delegate hands-on implementation — source/test edits in `core/`
+  and `plugin/`, config files — to subagents on a cheaper model (Agent tool with
+  `model: "sonnet"`). The orchestrator keeps for itself: planning, delegation prompts,
+  diff review, running tests/CI, git, PRs, and `docs/`/`CLAUDE.md` upkeep. Trivial
+  one-line fixes still go through a subagent unless the owner says otherwise.
 - **Subagents never run git.** They report; the orchestrator reviews the diff and
   commits. Uncommitted changes during a delegation are in-flight work, not something
   to commit on a hook's prompting.

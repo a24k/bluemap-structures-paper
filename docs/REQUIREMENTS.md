@@ -60,9 +60,15 @@ candidate per placement region), not from sampling:
 - Strongholds: vanilla's concentric-ring geometry (pre-biome-nudge approximation,
   documented accuracy ≤ ~112 blocks).
 - Buried treasure: per-chunk probability roll (opt-in layer).
-- Search area: square of configurable half-side `radius-blocks` centered on **world
-  origin (0,0)** **[D]** — matches the reference mod and the vanilla ring center;
-  spawn-centered search can be added later if wanted.
+- Search area: a configurable **list of square areas** (union semantics, deduplicated),
+  each `(center, radius-blocks)` where center is `origin`, `spawn` (resolved per world
+  at scan setup) or explicit `{x, z}` block coordinates. A per-world `worlds.<name>.areas`
+  override replaces the default list entirely for that world. **[D — revised, issue #4]**
+  The original single origin-centered square remains the default (`areas: [{center:
+  origin, radius-blocks: 5000}]`); real-server measurements (7–257 ms per world at
+  radius 5000, async) showed scan time is not the limit — marker count in the web app
+  is. Stronghold rings stay anchored at (0,0) by vanilla definition; areas only filter
+  which results are shown.
 
 ### FR-3 BlueMap presentation
 
@@ -84,10 +90,14 @@ candidate per placement region), not from sampling:
 
 | Key                          | Default | Meaning                                        |
 | ---------------------------- | ------- | ---------------------------------------------- |
-| `radius-blocks`              | `5000`  | Half-side of the search square around (0,0)    |
+| `areas`                      | `[{center: origin, radius-blocks: 5000}]` | Default search areas: list of `center` (`origin` \| `spawn` \| `{x, z}`) + `radius-blocks` (half-side, 256…1,000,000) |
+| `worlds.<name>.areas`        | —       | Per-world override; replaces the default list entirely for that world |
+| `radius-blocks`              | —       | Legacy sugar for `areas: [{center: origin, radius-blocks: N}]`; warned & ignored if `areas` is also set |
 | `layers.<id>`                | `true` (buried treasure: `false`) | Per-layer toggle |
 
 Unknown layer ids are ignored with a warning; missing keys fall back to defaults.
+World names under `worlds` are checked at scan time (not parse time): overrides that
+match no loaded world log a warning and are unused.
 
 ### FR-5 Recompute at startup
 
@@ -104,7 +114,8 @@ removed with the pivot.)
   thread is used only to set up per-world inputs and to publish markers. Measured
   cost target: milliseconds per world.
 - **NFR-2 Web-UI responsiveness.** Dense layers get `maxDistance` zoom gating with the
-  same distance tiers as the reference mod (5000 / 1000).
+  same distance tiers as the reference mod (5000 / 1000). A WARN is logged when a
+  world's scan exceeds ~5000 markers, pointing at area size and layer toggles.
 - **NFR-3 Testability.** All seed-independent logic (catalog, sampling plans,
   deduplication, config parsing, marker content) lives in a pure-Java `core` module
   with no Bukkit/BlueMap dependency, developed test-first (JUnit 5). The `plugin`
@@ -116,7 +127,6 @@ removed with the pivot.)
 
 - Folia support (Purpur is not Folia; classic `BukkitScheduler` is used).
 - Live re-scan commands / config hot-reload (restart to apply).
-- Spawn-centered or multi-center search areas.
 - End-city ship detection (the reference mod marks end ships separately; ours marks
   the city only).
 - Minecraft 1.21.x and older (the plugin targets the 26.x line onward).
