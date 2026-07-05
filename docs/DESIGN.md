@@ -209,23 +209,25 @@ client assets, which each server downloads directly from Mojang:
 
 ```
 ClientAssetIcons.ensureIcons()   (plugin, async thread, memoized per server session)
- ├─ fast path: plugins/BlueMapStructuresPaper/icons/<mcVersion>/<layerId>.png all
- │  present → no network I/O
+ ├─ fast path: plugins/BlueMapStructuresPaper/icons/<mcVersion>-v<pluginVersion>/
+ │  <layerId>.png all present → no network I/O (keyed by BOTH versions: a plugin
+ │  update that changes the IconSources table regenerates from the cached jar)
  ├─ resolve Bukkit.getMinecraftVersion() via piston-meta.mojang.com
  │  (version_manifest_v2.json → version JSON → downloads.client.{url,sha1}; Gson,
  │  bundled with Paper)
  ├─ download the client jar once → assets/client-<mcVersion>.jar (SHA-1 verified,
  │  atomic move, kept as cache)
  └─ per layer: read IconSources.texturePath entry from the jar →
-    IconComposer.compose → write the 22×22 PNG into icons/<mcVersion>/
+    IconComposer.compose → write the 22×22 PNG into the icons dir
 ```
 
 Failure semantics: any network/IO/parse problem logs ONE warning and returns whatever
 icons already exist on disk; affected markers use BlueMap's default POI icon and the
 fetch is retried on the next startup. `MarkerPublisher` uploads the generated PNGs
-into each map's `AssetStorage` under `bmsp-<mcVersion>-<layerId>.png` — version-keyed
-so a server upgrade refreshes the artwork despite AssetStorage's reuse-if-exists
-behavior.
+into each map's `AssetStorage` under `bmsp-<mcVersion>-v<pluginVersion>-<layerId>.png`
+— keyed by both versions so a server upgrade *or* a plugin update refreshes the
+artwork despite AssetStorage's reuse-if-exists behavior (and the changed URL busts
+browser caches).
 
 ## 6. Risks & mitigations
 

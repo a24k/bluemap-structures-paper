@@ -36,7 +36,7 @@ import org.ykak.minecraft.bluemapstructurespaper.core.StructureLayer;
  * server's Minecraft version to a client jar download + sha1, the jar (cached under the
  * plugin data folder) is opened to read each layer's vanilla texture, and
  * {@link IconComposer} renders it into the marker icon written to
- * {@code icons/<mcVersion>/<layerId>.png}.
+ * {@code icons/<mcVersion>-v<pluginVersion>/<layerId>.png}.
  *
  * <p>Any network, IO or parsing failure along the way is logged once and swallowed: the
  * plugin still runs, it just leaves whichever layers failed without a custom icon so
@@ -81,7 +81,12 @@ final class ClientAssetIcons {
 
   private Map<String, Path> computeIcons() {
     String mcVersion = Bukkit.getMinecraftVersion();
-    Path iconsDir = plugin.getDataFolder().toPath().resolve("icons").resolve(mcVersion);
+    Path iconsDir =
+        plugin
+            .getDataFolder()
+            .toPath()
+            .resolve("icons")
+            .resolve(mcVersion + "-v" + plugin.getPluginMeta().getVersion());
 
     Map<String, Path> onDisk = existingIcons(iconsDir);
     if (isComplete(onDisk)) {

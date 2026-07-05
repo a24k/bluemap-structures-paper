@@ -109,12 +109,15 @@ final class MarkerPublisher {
   /**
    * Writes generated icons (see {@link ClientAssetIcons}) into the map's asset storage
    * (skipping ones already there). Asset names are keyed by the running Minecraft version
-   * so an icon set generated for one version is not reused after a server upgrade.
+   * and the plugin's own version, so an icon set generated for one combination is not
+   * reused after a server upgrade or a plugin update that changes the icon table (the new
+   * asset name also busts browser caches of the old URL).
    */
   private Map<String, String> storeIcons(BlueMapMap map, Map<String, Path> iconFiles) {
     Map<String, String> addresses = new HashMap<>();
     AssetStorage storage = map.getAssetStorage();
     String mcVersion = Bukkit.getMinecraftVersion();
+    String pluginVersion = plugin.getPluginMeta().getVersion();
     for (StructureLayer layer : StructureCatalog.layers()) {
       if (!settings.isLayerEnabled(layer.id())) {
         continue;
@@ -123,7 +126,7 @@ final class MarkerPublisher {
       if (iconFile == null) {
         continue;
       }
-      String assetName = "bmsp-" + mcVersion + "-" + layer.id() + ".png";
+      String assetName = "bmsp-" + mcVersion + "-v" + pluginVersion + "-" + layer.id() + ".png";
       try {
         if (!storage.assetExists(assetName)) {
           BufferedImage image;
