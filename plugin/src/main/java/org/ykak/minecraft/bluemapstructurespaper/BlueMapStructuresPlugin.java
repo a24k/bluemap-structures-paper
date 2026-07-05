@@ -3,11 +3,13 @@ package org.ykak.minecraft.bluemapstructurespaper;
 import de.bluecolored.bluemap.api.BlueMapAPI;
 import org.ykak.minecraft.bluemapstructurespaper.core.Settings;
 import org.ykak.minecraft.bluemapstructurespaper.core.StructureCatalog;
+import java.io.File;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Consumer;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class BlueMapStructuresPlugin extends JavaPlugin {
@@ -19,7 +21,12 @@ public final class BlueMapStructuresPlugin extends JavaPlugin {
   @Override
   public void onEnable() {
     saveDefaultConfig();
-    Settings settings = Settings.fromMap(toMap(getConfig()), StructureCatalog.layers());
+    // Load the user's file as-is instead of getConfig(): getConfig() merges the bundled
+    // config.yml in as defaults, which would make the bundled 'areas' key shadow a legacy
+    // user config that only sets 'radius-blocks' (Settings handles missing keys itself).
+    YamlConfiguration config =
+        YamlConfiguration.loadConfiguration(new File(getDataFolder(), "config.yml"));
+    Settings settings = Settings.fromMap(toMap(config), StructureCatalog.layers());
     settings.warnings().forEach(warning -> getLogger().warning("config.yml: " + warning));
 
     coordinator = new ScanCoordinator(this, settings);
