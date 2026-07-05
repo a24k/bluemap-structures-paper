@@ -60,3 +60,21 @@ Rules that made delegated implementation work well here; keep following them:
   (`paper-api`). Do not hardcode it elsewhere.
 - New structure layers go in `StructureCatalog` (core) + an icon in
   `plugin/src/main/resources/icons/` + a row in the DESIGN.md table.
+
+## Placement-fidelity playbook
+
+Lessons from the outpost false-positive fix (0.3.0); follow them for future
+marker-vs-reality reports:
+
+- **Desk-verify before implementing**: reproduce the suspected placement math in a
+  scratchpad script and test it against the reporter's world seed + coordinates first.
+  The outpost rarity gate was confirmed 4/4 (three phantoms fail, the real one passes)
+  — and competing formula variants were *refuted* by the same data — before any core
+  code changed.
+- **cubiomes cross-checks must cover `isViableStructurePos`, not just
+  `getStructureConfig`**: spacing/separation/salt live in the config, but rarity gates,
+  exclusion zones, and other extra conditions live in the viability check. Checking
+  only the config is how the outpost gate was originally missed.
+- Remaining known gaps are tracked in DESIGN §2.2 / REQUIREMENTS §6 (end-city distance
+  floor, fortress biome-gating question, stronghold biome nudge). Validate against a
+  real server before modeling them.

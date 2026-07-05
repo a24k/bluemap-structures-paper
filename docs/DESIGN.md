@@ -58,12 +58,16 @@ Known deliberate deviation: `ruined_portal_nether` uses the 1.17+ config
 
 Pure seed math, one method per placement kind (`Placement` is a sealed interface):
 
-- **`Grid(spacing, separation, salt, spread)`** — vanilla random-spread: for every
-  placement region `(rx, rz)` covering the search square,
+- **`Grid(spacing, separation, salt, spread[, frequency, exclusionZone])`** — vanilla
+  random-spread: for every placement region `(rx, rz)` covering the search square,
   `Random(rx·341873128712 + rz·132897987541 + worldSeed + salt)`, then offset
   `nextInt(spacing − separation)` per axis (LINEAR) or the average of two rolls
   (TRIANGULAR: monument, mansion, end_city). One candidate chunk per region; block
-  position is the chunk center (+8, +8).
+  position is the chunk center (+8, +8). Two optional gates then filter the candidate:
+  `frequency < 1` applies vanilla's `legacy_type_1` rarity reduction, and
+  `exclusionZone` drops candidates within N chunks (Chebyshev) of another grid's
+  placement candidates. Only `pillager_outpost` uses them (0.2 / villages·10 — see the
+  closed-gap note below for the exact math).
 - **`NetherComplex(role)`** — fortress and bastion share one grid
   (27 / 4 / salt 30084232); a second roll decides the occupant:
   `carverSeed = multA·chunkX ^ multB·chunkZ ^ worldSeed` (multA/multB from
