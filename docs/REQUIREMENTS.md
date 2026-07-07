@@ -75,8 +75,11 @@ candidate per placement region), not from sampling:
 - One toggleable BlueMap `MarkerSet` per structure layer per map, so each layer can be
   switched on/off in the web UI sidebar.
 - Each structure is a `POIMarker` with:
-  - a per-layer icon (reused from mc-bluemap-structures, MIT — see
-    `THIRD_PARTY_NOTICES.md`), anchored at its center;
+  - a per-layer icon, anchored at its center — **[D — revised, issue #2]** generated
+    at first startup from Mojang's client assets (fetched by the server itself via
+    `piston-meta.mojang.com`, cached in the plugin data folder) instead of bundling
+    third-party artwork of undocumented provenance; when the fetch fails (offline
+    server) markers use BlueMap's default POI icon;
   - a label `<display name> (x, z)`;
   - a popup containing a copyable `/tp` command (`/tp @s x y z`);
   - zoom-gated visibility (`maxDistance`) so dense layers (shipwrecks, ocean ruins…)

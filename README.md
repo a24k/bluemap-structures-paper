@@ -15,7 +15,10 @@ A Paper-API reimplementation of the Fabric mod
   pillager outpost, ancient city, trail ruins, trial chambers, ocean ruin, shipwreck,
   ruined portal (overworld & nether), ocean monument, woodland mansion, nether
   fortress, bastion remnant, end city, buried treasure (opt-in), stronghold.
-- **Per-layer toggles** in the BlueMap sidebar, each with its own icon.
+- **Per-layer toggles** in the BlueMap sidebar, each with its own icon — generated on
+  first startup from Mojang's official client assets (downloaded by your server
+  directly from Mojang, cached in the plugin data folder; no third-party artwork is
+  bundled or redistributed).
 - **Copyable `/tp` command** in every marker popup.
 - **Zoom-gated visibility** for dense layers (shipwrecks, ocean ruins, …) to keep the
   web app responsive.
@@ -39,6 +42,13 @@ A Paper-API reimplementation of the Fabric mod
 1. Drop `BlueMapStructuresPaper-x.y.z.jar` into `plugins/`.
 2. Restart. On every start the plugin recomputes the markers from each mapped world's
    seed (milliseconds per world; totals in console) and registers the marker layers.
+
+On the first start the plugin also downloads the Minecraft client jar for your server's
+version from Mojang (`piston-meta.mojang.com`, the same source launchers use) and crops
+the marker icons out of its textures; both the jar and the generated icons are cached
+under `plugins/BlueMapStructuresPaper/`. If the download fails (offline server),
+markers still work with BlueMap's default POI icon and the plugin retries on the next
+start.
 
 ## Configuration
 
@@ -88,7 +98,7 @@ chunks per candidate cell and stall the server (see issue #3). See
 ## Related projects
 
 - [mc-bluemap-structures](https://github.com/dannysmith/mc-bluemap-structures) — the
-  Fabric original this plugin reimplements (icons reused under MIT, see
+  Fabric original this plugin reimplements (structure-catalog reference data, see
   [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)).
 - [BlueMapStructures](https://github.com/TechnicJelle/BlueMapStructures) — Paper-based
   alternative that reads *generated* chunks from disk instead of predicting from the

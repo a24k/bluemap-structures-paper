@@ -1,23 +1,36 @@
 # Third-party notices
 
+## Marker icons (Mojang client assets, not redistributed)
+
+Since 0.4.0 the marker icons are **generated at runtime** on each server: the plugin
+downloads the Minecraft client jar for the server's version directly from Mojang's
+official distribution endpoint (`piston-meta.mojang.com` — the same mechanism game
+launchers use), crops per-layer 22×22 icons from its item/block textures, and caches
+the results under the plugin data folder. No Mojang assets are bundled in or
+redistributed by this repository; each server obtains them from Mojang under its own
+Minecraft EULA. When the download is unavailable (offline servers), BlueMap's default
+POI icon is used instead.
+
+Versions before 0.4.0 bundled the icon set from mc-bluemap-structures (see below);
+those icons were removed because their provenance was not documented upstream
+(issue #2).
+
 ## mc-bluemap-structures
 
 - Source: https://github.com/dannysmith/mc-bluemap-structures
 - Author: Danny Smith (`dannysmith`)
 - License: MIT — declared in the project's `fabric.mod.json`; the repository contains
-  no LICENSE file, and the original provenance of the icon artwork is not documented
-  upstream. Replacing the bundled icons with runtime-fetched official client assets is
-  tracked in issue #2.
+  no LICENSE file.
 
 Reused in this project:
 
-- The marker icon set (`plugin/src/main/resources/icons/*.png`), copied verbatim.
 - The structure catalog reference data (spacing / separation / zoom-visibility tiers)
-  that informed `core/src/main/java/dev/a24k/bluemapstructures/core/StructureCatalog.java`
+  that informed `core/src/main/java/.../core/StructureCatalog.java`
   (with corrections — see docs/DESIGN.md).
 
 No source code was copied; this plugin is an independent implementation on the Paper
-API.
+API. The project's marker icon set was bundled up to 0.3.0 and has been removed in
+favor of runtime-generated icons (see above).
 
 ## Seed-math placement algorithm (provenance)
 

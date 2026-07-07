@@ -1,6 +1,7 @@
 package org.ykak.minecraft.bluemapstructurespaper;
 
 import de.bluecolored.bluemap.api.BlueMapAPI;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -40,12 +41,14 @@ final class ScanCoordinator {
   private final BlueMapStructuresPlugin plugin;
   private final Settings settings;
   private final MarkerPublisher publisher;
+  private final ClientAssetIcons clientAssetIcons;
   private final List<BukkitTask> activeTasks = new ArrayList<>();
 
   ScanCoordinator(BlueMapStructuresPlugin plugin, Settings settings) {
     this.plugin = plugin;
     this.settings = settings;
     this.publisher = new MarkerPublisher(plugin, settings);
+    this.clientAssetIcons = new ClientAssetIcons(plugin);
   }
 
   /** Main thread only. */
@@ -141,6 +144,11 @@ final class ScanCoordinator {
               + " reduces drawing, not the marker payload).");
     }
 
+    // Blocking, but memoized: only the first world/scan of this server session actually
+    // downloads/decodes the client jar (issue #2). Done here, still off the main thread,
+    // so BlueMap and Bukkit never stall on the network fetch.
+    Map<String, Path> icons = clientAssetIcons.ensureIcons();
+
     Bukkit.getScheduler()
         .runTask(
             plugin,
@@ -148,7 +156,7 @@ final class ScanCoordinator {
               if (!plugin.isEnabled()) {
                 return; // plugin was disabled while the async scan was in flight
               }
-              publisher.publish(api, world, results);
+              publisher.publish(api, world, results, icons);
             });
   }
 

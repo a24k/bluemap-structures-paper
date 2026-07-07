@@ -56,7 +56,6 @@ public final class StructureCatalog {
                   "has_structure/village_snowy",
                   "has_structure/village_taiga"),
               WIDE,
-              "village.png",
               true),
           linear(
               "desert_pyramid",
@@ -66,8 +65,7 @@ public final class StructureCatalog {
               14357617,
               List.of("minecraft:desert_pyramid"),
               List.of("has_structure/desert_pyramid"),
-              WIDE,
-              "desert_temple.png"),
+              WIDE),
           linear(
               "jungle_temple",
               "Jungle Temples",
@@ -77,8 +75,7 @@ public final class StructureCatalog {
               // vanilla registry name differs from the colloquial one
               List.of("minecraft:jungle_pyramid"),
               List.of("has_structure/jungle_temple"),
-              WIDE,
-              "jungle_temple.png"),
+              WIDE),
           linear(
               "swamp_hut",
               "Swamp Huts",
@@ -87,8 +84,7 @@ public final class StructureCatalog {
               14357620,
               List.of("minecraft:swamp_hut"),
               List.of("has_structure/swamp_hut"),
-              WIDE,
-              "witch_hut.png"),
+              WIDE),
           linear(
               "igloo",
               "Igloos",
@@ -97,8 +93,7 @@ public final class StructureCatalog {
               14357618,
               List.of("minecraft:igloo"),
               List.of("has_structure/igloo"),
-              WIDE,
-              "igloo.png"),
+              WIDE),
           new StructureLayer(
               "pillager_outpost",
               "Pillager Outposts",
@@ -113,7 +108,6 @@ public final class StructureCatalog {
               List.of("minecraft:pillager_outpost"),
               List.of("has_structure/pillager_outpost"),
               WIDE,
-              "outpost.png",
               true),
           linear(
               "ancient_city",
@@ -123,8 +117,7 @@ public final class StructureCatalog {
               20083232,
               List.of("minecraft:ancient_city"),
               List.of("has_structure/ancient_city"),
-              WIDE,
-              "ancient_city.png"),
+              WIDE),
           linear(
               "trail_ruins",
               "Trail Ruins",
@@ -133,8 +126,7 @@ public final class StructureCatalog {
               83469867,
               List.of("minecraft:trail_ruins"),
               List.of("has_structure/trail_ruins"),
-              WIDE,
-              "trail_ruins.png"),
+              WIDE),
           linear(
               "trial_chambers",
               "Trial Chambers",
@@ -143,8 +135,7 @@ public final class StructureCatalog {
               94251327,
               List.of("minecraft:trial_chambers"),
               List.of("has_structure/trial_chambers"),
-              ZOOMED_IN,
-              "trial_chamber.png"),
+              ZOOMED_IN),
           linear(
               "ocean_ruin",
               "Ocean Ruins",
@@ -153,8 +144,7 @@ public final class StructureCatalog {
               14357621,
               List.of("minecraft:ocean_ruin_cold", "minecraft:ocean_ruin_warm"),
               List.of("has_structure/ocean_ruin_cold", "has_structure/ocean_ruin_warm"),
-              ZOOMED_IN,
-              "ocean_ruins.png"),
+              ZOOMED_IN),
           linear(
               "shipwreck",
               "Shipwrecks",
@@ -163,8 +153,7 @@ public final class StructureCatalog {
               165745295,
               List.of("minecraft:shipwreck", "minecraft:shipwreck_beached"),
               List.of("has_structure/shipwreck", "has_structure/shipwreck_beached"),
-              ZOOMED_IN,
-              "shipwreck.png"),
+              ZOOMED_IN),
           linear(
               "ruined_portal",
               "Ruined Portals (Overworld)",
@@ -179,8 +168,7 @@ public final class StructureCatalog {
                   "minecraft:ruined_portal_mountain",
                   "minecraft:ruined_portal_ocean"),
               List.of(),
-              ZOOMED_IN,
-              "ruined_portal_ow.png"),
+              ZOOMED_IN),
           triangular(
               "monument",
               "Ocean Monuments",
@@ -189,8 +177,7 @@ public final class StructureCatalog {
               10387313,
               List.of("minecraft:monument"),
               List.of("has_structure/ocean_monument"),
-              WIDE,
-              "monument.png"),
+              WIDE),
           triangular(
               "mansion",
               "Woodland Mansions",
@@ -199,8 +186,7 @@ public final class StructureCatalog {
               10387319,
               List.of("minecraft:mansion"),
               List.of("has_structure/woodland_mansion"),
-              WIDE,
-              "mansion.png"),
+              WIDE),
           new StructureLayer(
               "fortress",
               "Nether Fortresses",
@@ -209,7 +195,6 @@ public final class StructureCatalog {
               List.of("minecraft:fortress"),
               List.of("has_structure/nether_fortress"),
               WIDE,
-              "nether_fortress.png",
               true),
           new StructureLayer(
               "bastion",
@@ -219,7 +204,6 @@ public final class StructureCatalog {
               List.of("minecraft:bastion_remnant"),
               List.of("has_structure/bastion_remnant"),
               WIDE,
-              "bastion.png",
               true),
           new StructureLayer(
               "ruined_portal_nether",
@@ -230,7 +214,6 @@ public final class StructureCatalog {
               List.of("minecraft:ruined_portal_nether"),
               List.of(),
               WIDE,
-              "ruined_portal_nether.png",
               true),
           new StructureLayer(
               "end_city",
@@ -240,7 +223,6 @@ public final class StructureCatalog {
               List.of("minecraft:end_city"),
               List.of("has_structure/end_city"),
               WIDE,
-              "end_city.png",
               true),
           new StructureLayer(
               "buried_treasure",
@@ -250,7 +232,6 @@ public final class StructureCatalog {
               List.of("minecraft:buried_treasure"),
               List.of("has_structure/buried_treasure"),
               ZOOMED_IN,
-              "treasure.png",
               false),
           new StructureLayer(
               "stronghold",
@@ -260,7 +241,6 @@ public final class StructureCatalog {
               List.of("minecraft:stronghold"),
               List.of(),
               WIDE,
-              "stronghold.png",
               true));
 
   private StructureCatalog() {}
@@ -282,8 +262,7 @@ public final class StructureCatalog {
       long salt,
       List<String> keys,
       List<String> biomeTagIds,
-      int zoom,
-      String icon) {
+      int zoom) {
     return new StructureLayer(
         id,
         name,
@@ -292,7 +271,6 @@ public final class StructureCatalog {
         keys,
         biomeTagIds,
         zoom,
-        icon,
         true);
   }
 
@@ -304,8 +282,7 @@ public final class StructureCatalog {
       long salt,
       List<String> keys,
       List<String> biomeTagIds,
-      int zoom,
-      String icon) {
+      int zoom) {
     return new StructureLayer(
         id,
         name,
@@ -314,7 +291,6 @@ public final class StructureCatalog {
         keys,
         biomeTagIds,
         zoom,
-        icon,
         true);
   }
 }
