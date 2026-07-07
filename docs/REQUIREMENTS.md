@@ -35,6 +35,10 @@ city, trail ruins, trial chambers, ocean ruin, shipwreck, ruined portal (overwor
 ocean monument, woodland mansion, nether fortress, bastion remnant, ruined portal
 (nether), end city, buried treasure, stronghold.
 
+Plus, beyond reference-mod parity: **mineshaft** (issue #7) — one layer aggregating
+`minecraft:mineshaft` + `minecraft:mineshaft_mesa`, placed by vanilla's per-chunk
+`legacy_type_3` carver-seed roll (probability 0.004).
+
 - **[D — revised after real-server testing, see issue #3]** Positions are computed by
   reimplementing vanilla's placement math in `core` (Chunkbase-style), validated
   against biome data through the Paper API (`vanillaBiomeProvider` + `has_structure/*`
@@ -47,6 +51,9 @@ ocean monument, woodland mansion, nether fortress, bastion remnant, ruined porta
 - **[D]** Buried treasure ships **disabled by default**: per-chunk placement yields
   ~0.01 × chunks ≈ thousands of markers at the default radius, which strains the
   BlueMap web app. (Compute cost is no longer a concern with seed math.)
+- **[D]** Mineshaft likewise ships **disabled by default** for the same reason:
+  ~0.004 × chunks ≈ 1500+ markers at the default radius 5000. Zoom-gated (1000)
+  when enabled.
 
 ### FR-2 Area enumeration
 
@@ -96,7 +103,7 @@ candidate per placement region), not from sampling:
 | `areas`                      | `[{center: origin, radius-blocks: 5000}]` | Default search areas: list of `center` (`origin` \| `spawn` \| `{x, z}`) + `radius-blocks` (half-side, 256…1,000,000) |
 | `worlds.<name>.areas`        | —       | Per-world override; replaces the default list entirely for that world |
 | `radius-blocks`              | —       | Legacy sugar for `areas: [{center: origin, radius-blocks: N}]`; warned & ignored if `areas` is also set |
-| `layers.<id>`                | `true` (buried treasure: `false`) | Per-layer toggle |
+| `layers.<id>`                | `true` (buried treasure, mineshaft: `false`) | Per-layer toggle |
 
 Unknown layer ids are ignored with a warning; missing keys fall back to defaults.
 World names under `worlds` are checked at scan time (not parse time): overrides that
@@ -148,3 +155,7 @@ Fidelity gaps of the seed-math locator vs vanilla, to be checked against a real 
   treats 1.18+ fortresses as biome-gated instead.
 - End cities: vanilla enforces a ≥1008-block distance floor; our biome check masks
   most of it but not exactly.
+- Mineshafts (issue #7): the legacy_type_3 roll is desk-verified against cubiomes
+  (`getMineshafts`, and `isViableStructurePos` confirms no extra gates), but the
+  real-server spot check (`/locate structure minecraft:mineshaft`, incl. one absence
+  check) is still pending — the sandbox has no server to run it on.
