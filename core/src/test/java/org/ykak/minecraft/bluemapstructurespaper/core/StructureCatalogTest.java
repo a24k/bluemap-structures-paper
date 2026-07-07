@@ -13,9 +13,9 @@ import org.junit.jupiter.api.Test;
 class StructureCatalogTest {
 
   @Test
-  void hasTwentyLayersWithUniqueIds() {
+  void hasTwentyOneLayersWithUniqueIds() {
     List<StructureLayer> layers = StructureCatalog.layers();
-    assertEquals(20, layers.size());
+    assertEquals(21, layers.size());
 
     Set<String> ids = new HashSet<>();
     for (StructureLayer layer : layers) {
@@ -30,10 +30,11 @@ class StructureCatalogTest {
   }
 
   @Test
-  void onlyBuriedTreasureIsDisabledByDefault() {
+  void onlyBuriedTreasureAndMineshaftAreDisabledByDefault() {
+    Set<String> disabledByDefault = Set.of("buried_treasure", "mineshaft");
     for (StructureLayer layer : StructureCatalog.layers()) {
-      if (layer.id().equals("buried_treasure")) {
-        assertFalse(layer.defaultEnabled());
+      if (disabledByDefault.contains(layer.id())) {
+        assertFalse(layer.defaultEnabled(), layer.id() + " should default to disabled");
       } else {
         assertTrue(layer.defaultEnabled(), layer.id() + " should default to enabled");
       }
@@ -53,6 +54,7 @@ class StructureCatalogTest {
     assertEquals(6, StructureCatalog.byId("ruined_portal").orElseThrow().structureKeys().size());
     assertEquals(2, StructureCatalog.byId("ocean_ruin").orElseThrow().structureKeys().size());
     assertEquals(2, StructureCatalog.byId("shipwreck").orElseThrow().structureKeys().size());
+    assertEquals(2, StructureCatalog.byId("mineshaft").orElseThrow().structureKeys().size());
     // vanilla registry name differs from the colloquial one
     assertEquals(
         List.of("minecraft:jungle_pyramid"),
@@ -80,7 +82,7 @@ class StructureCatalogTest {
         StructureCatalog.layers().stream()
             .filter(l -> l.dimension() == Dimension.OVERWORLD)
             .count();
-    assertEquals(16, overworld);
+    assertEquals(17, overworld);
   }
 
   @Test
@@ -88,7 +90,7 @@ class StructureCatalogTest {
     for (StructureLayer layer : StructureCatalog.layers()) {
       switch (layer.id()) {
         case "stronghold" -> assertInstanceOf(Placement.ConcentricRings.class, layer.placement());
-        case "buried_treasure" ->
+        case "buried_treasure", "mineshaft" ->
             assertInstanceOf(Placement.PerChunkProbability.class, layer.placement());
         case "fortress", "bastion" ->
             assertInstanceOf(Placement.NetherComplex.class, layer.placement());
@@ -134,12 +136,19 @@ class StructureCatalogTest {
   }
 
   @Test
-  void perChunkProbabilityMatchesVanillaTreasureFormula() {
+  void perChunkProbabilityMatchesVanillaFormulas() {
     Placement.PerChunkProbability treasure =
         (Placement.PerChunkProbability)
             StructureCatalog.byId("buried_treasure").orElseThrow().placement();
     assertEquals(10387320L, treasure.salt());
     assertEquals(0.01, treasure.probability(), 1e-9);
+    assertEquals(Placement.ChunkRoll.LEGACY_TYPE_2, treasure.roll());
+
+    Placement.PerChunkProbability mineshaft =
+        (Placement.PerChunkProbability) StructureCatalog.byId("mineshaft").orElseThrow().placement();
+    assertEquals(0L, mineshaft.salt());
+    assertEquals(0.004, mineshaft.probability(), 1e-9);
+    assertEquals(Placement.ChunkRoll.LEGACY_TYPE_3, mineshaft.roll());
   }
 
   @Test
@@ -155,6 +164,9 @@ class StructureCatalogTest {
     assertEquals(
         List.of("has_structure/ocean_monument"),
         StructureCatalog.byId("monument").orElseThrow().biomeTagIds());
+    assertEquals(
+        List.of("has_structure/mineshaft", "has_structure/mineshaft_mesa"),
+        StructureCatalog.byId("mineshaft").orElseThrow().biomeTagIds());
 
     // empty = no biome restriction
     assertTrue(StructureCatalog.byId("ruined_portal").orElseThrow().biomeTagIds().isEmpty());
@@ -175,6 +187,7 @@ class StructureCatalogTest {
     // dense layers are zoom-gated
     assertEquals(1000, StructureCatalog.byId("shipwreck").orElseThrow().zoomMaxDistance());
     assertEquals(1000, StructureCatalog.byId("ocean_ruin").orElseThrow().zoomMaxDistance());
+    assertEquals(1000, StructureCatalog.byId("mineshaft").orElseThrow().zoomMaxDistance());
   }
 
   private static void assertGrid(

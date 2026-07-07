@@ -33,6 +33,7 @@ public final class IconSources {
           Map.entry("ruined_portal_nether", TEXTURES_ROOT + "block/crying_obsidian.png"),
           Map.entry("end_city", TEXTURES_ROOT + "item/shulker_shell.png"),
           Map.entry("buried_treasure", TEXTURES_ROOT + "item/heart_of_the_sea.png"),
+          Map.entry("mineshaft", TEXTURES_ROOT + "item/iron_pickaxe.png"),
           Map.entry("stronghold", TEXTURES_ROOT + "item/ender_eye.png"));
 
   private IconSources() {}

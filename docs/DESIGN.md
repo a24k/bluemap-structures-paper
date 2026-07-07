@@ -30,7 +30,7 @@ The split is driven by two forces:
 
 ### 2.1 StructureCatalog / StructureLayer
 
-Static table of the 20 supported layers. Each layer carries its vanilla placement
+Static table of the 21 supported layers. Each layer carries its vanilla placement
 parameters (cross-checked against cubiomes `finders.c`, MIT) and the
 `minecraft:has_structure/*` biome tag ids used for validation:
 
@@ -48,7 +48,8 @@ Layer set (spacing/separation/salt omitted here — the catalog source is author
 village, desert_pyramid, jungle_temple, swamp_hut, igloo, pillager_outpost,
 ancient_city, trail_ruins, trial_chambers, ocean_ruin, shipwreck, ruined_portal (OW),
 monument, mansion, fortress, bastion, ruined_portal_nether, end_city, buried_treasure
-(opt-in), stronghold.
+(opt-in), mineshaft (opt-in, issue #7 — beyond reference-mod parity; one layer
+aggregating `minecraft:mineshaft` + `minecraft:mineshaft_mesa`), stronghold.
 
 Known deliberate deviation: `ruined_portal_nether` uses the 1.17+ config
 (spacing 25 / separation 10, cubiomes `s_ruined_portal_n_117`); the reference mod's
@@ -76,9 +77,20 @@ Pure seed math, one method per placement kind (`Placement` is a sealed interface
   algorithm seeded with `Random(worldSeed)`. **Accuracy caveat:** vanilla nudges each
   position up to ~112 blocks toward a valid biome using world data this module
   deliberately lacks; we return the pre-nudge geometric position.
-- **`PerChunkProbability(salt, p)`** — buried treasure:
-  `Random(chunkX·341873128712 + chunkZ·132897987541 + seed + 10387320).nextFloat() < 0.01`
-  per chunk.
+- **`PerChunkProbability(salt, p, roll)`** — independent per-chunk rolls (vanilla
+  random_spread with spacing 1 / separation 0 degenerates to this). Two roll methods,
+  named after vanilla's `frequency_reduction_method`:
+  - `LEGACY_TYPE_2` — buried treasure:
+    `Random(chunkX·341873128712 + chunkZ·132897987541 + seed + 10387320).nextFloat() < 0.01`;
+    marker at the vanilla loot offset (+9, +9).
+  - `LEGACY_TYPE_3` — mineshaft: carver seeding (same machinery as the
+    fortress/bastion roll): `a`/`b` from `Random(worldSeed).nextLong()` twice, then
+    `Random((chunkX·a) ^ (chunkZ·b) ^ seed).nextDouble() < 0.004`. The structure set's
+    salt (0) is unused by this method. Cross-checked against cubiomes `getMineshafts`
+    (MC 1.13+ branch); cubiomes' `isViableStructurePos` applies no further gates for
+    mineshafts (biome viability is simply "any overworld biome" — the layer's
+    `has_structure/mineshaft` + `has_structure/mineshaft_mesa` tag union covers that).
+    Marker at the chunk center (+8, +8) — mineshafts have no fixed anchor point.
 
 The search space is a **union of `SearchArea`s** (issue #4):
 `locate(layer, seed, List<SearchArea>, BiomeCheck)` sweeps each area's own
@@ -236,7 +248,7 @@ browser caches).
 | Placement constants drift in future MC versions | catalog cross-checked against cubiomes; single source in `StructureCatalog`; golden-vector tests pin behavior |
 | Stronghold positions off by ≤ ~112 blocks (no biome nudge) | documented; markers still land on the map; revisit if /tp precision matters |
 | Outpost over-reporting (missing vanilla rarity gate) | RESOLVED: field-verified on a real server (3 phantom markers all failed the gate, the confirmed outpost passed); locator now models the legacy_type_1 rarity gate (frequency 0.2) and the 10-chunk village exclusion zone |
-| BlueMap web app slows with many markers | zoom gating (`maxDistance`), buried treasure opt-in (thousands of markers), configurable search areas, WARN above ~5000 markers per world |
+| BlueMap web app slows with many markers | zoom gating (`maxDistance`), buried treasure & mineshaft opt-in (per-chunk layers, hundreds-to-thousands of markers), configurable search areas, WARN above ~5000 markers per world |
 | `vanillaBiomeProvider` failures on exotic worlds | try/catch → validate-all + one WARN (Paper #9394) |
 | Offline server / piston-meta unreachable → no icons | one WARN, markers fall back to BlueMap's default POI icon, fetch retried next startup; client jar + PNGs cached after first success |
 | Mojang renames a texture path in a future MC version | per-layer WARN + default-icon fallback (never fatal); `IconSources` is the single table to fix |

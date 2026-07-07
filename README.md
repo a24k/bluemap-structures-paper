@@ -1,7 +1,7 @@
 # BlueMap Structures Paper
 
 Chunkbase-style, seed-derived structure markers for [BlueMap](https://bluemap.bluecolored.de/),
-as a **Paper/Purpur plugin**. Villages, strongholds, ocean monuments and 17 other
+as a **Paper/Purpur plugin**. Villages, strongholds, ocean monuments and 18 other
 structure layers appear as toggleable marker layers on your web map — computed from the
 world seed, without loading or generating chunks.
 
@@ -11,10 +11,11 @@ A Paper-API reimplementation of the Fabric mod
 
 ## Features
 
-- **20 structure layers** — village, desert pyramid, jungle temple, swamp hut, igloo,
+- **21 structure layers** — village, desert pyramid, jungle temple, swamp hut, igloo,
   pillager outpost, ancient city, trail ruins, trial chambers, ocean ruin, shipwreck,
   ruined portal (overworld & nether), ocean monument, woodland mansion, nether
-  fortress, bastion remnant, end city, buried treasure (opt-in), stronghold.
+  fortress, bastion remnant, end city, buried treasure (opt-in), mineshaft (opt-in),
+  stronghold.
 - **Per-layer toggles** in the BlueMap sidebar, each with its own icon — generated on
   first startup from Mojang's official client assets (downloaded by your server
   directly from Mojang, cached in the plugin data folder; no third-party artwork is
@@ -69,6 +70,7 @@ layers:                    # one toggle per structure layer
   village: true
   # ...
   buried_treasure: false   # opt-in: ~0.01/chunk → thousands of markers at radius 5000
+  mineshaft: false         # opt-in: ~0.004/chunk → 1500+ markers at radius 5000
 ```
 
 The legacy top-level `radius-blocks: 5000` form still works as shorthand for a single

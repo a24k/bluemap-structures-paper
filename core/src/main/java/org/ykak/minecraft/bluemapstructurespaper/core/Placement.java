@@ -75,9 +75,26 @@ public sealed interface Placement {
     public static final long SALT = 30084232L;
   }
 
+  /** How a {@link PerChunkProbability} layer seeds and rolls its per-chunk check. */
+  enum ChunkRoll {
+    /**
+     * {@code legacy_type_2} (buried treasure): {@code Random(chunkX*341873128712 +
+     * chunkZ*132897987541 + worldSeed + salt)}, then {@code nextFloat() < probability}.
+     */
+    LEGACY_TYPE_2,
+    /**
+     * {@code legacy_type_3} (mineshaft): carver seeding — {@code Random(worldSeed)} yields two
+     * {@code nextLong()} multipliers {@code a}, {@code b}; {@code Random((chunkX*a) ^
+     * (chunkZ*b) ^ worldSeed)}, then {@code nextDouble() < probability}. The salt is unused by
+     * vanilla for this method.
+     */
+    LEGACY_TYPE_3
+  }
+
   /**
-   * Per-chunk placement (buried treasure): every chunk independently rolls a
-   * {@code nextFloat() < probability} check seeded from its own chunk coordinates.
+   * Per-chunk placement: every chunk independently rolls a probability check seeded from its
+   * own chunk coordinates, per {@link ChunkRoll}. Vanilla uses this for buried treasure
+   * ({@code legacy_type_2}) and mineshafts ({@code legacy_type_3}).
    */
-  record PerChunkProbability(long salt, double probability) implements Placement {}
+  record PerChunkProbability(long salt, double probability, ChunkRoll roll) implements Placement {}
 }

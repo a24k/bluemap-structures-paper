@@ -25,6 +25,13 @@ import org.junit.jupiter.api.Test;
  * <p>{@code pillager_outpost} vectors additionally exercise the {@code legacy_type_1} rarity
  * gate (frequency 0.2) and the 10-chunk village exclusion zone; they were cross-validated
  * against a real server world, not just the throwaway generator.
+ *
+ * <p>{@code mineshaft} vectors come from a separate, fresh scratchpad generator (not derived
+ * from the reference mod) implementing vanilla's {@code legacy_type_3} carver-seed roll —
+ * {@code Random(worldSeed)} yields two {@code nextLong()} multipliers, then {@code
+ * Random((chunkX*a) ^ (chunkZ*b) ^ worldSeed).nextDouble() < 0.004} per chunk — cross-checked
+ * against cubiomes {@code getMineshafts} (MC 1.13+ branch). Radius 1024 (denser layer than the
+ * others, so a smaller area keeps the vector lists a reasonable size).
  */
 class SeedStructureLocatorGoldenVectorTest {
 
@@ -82,6 +89,11 @@ class SeedStructureLocatorGoldenVectorTest {
   }
 
   @Test
+  void mineshaftSeed42() {
+    assertGolden("mineshaft", 42L, 1024, MINESHAFT_42);
+  }
+
+  @Test
   void villageSeed69420() {
     assertGolden("village", 69420L, 3000, VILLAGE_69420);
   }
@@ -132,6 +144,11 @@ class SeedStructureLocatorGoldenVectorTest {
   }
 
   @Test
+  void mineshaftSeed69420() {
+    assertGolden("mineshaft", 69420L, 1024, MINESHAFT_69420);
+  }
+
+  @Test
   void villageSeedneg3849722879() {
     assertGolden("village", -3849722879L, 3000, VILLAGE_NEG3849722879);
   }
@@ -179,6 +196,11 @@ class SeedStructureLocatorGoldenVectorTest {
   @Test
   void buriedTreasureSeedneg3849722879() {
     assertGolden("buried_treasure", -3849722879L, 512, BURIED_TREASURE_NEG3849722879);
+  }
+
+  @Test
+  void mineshaftSeedneg3849722879() {
+    assertGolden("mineshaft", -3849722879L, 1024, MINESHAFT_NEG3849722879);
   }
 
 
@@ -648,6 +670,34 @@ class SeedStructureLocatorGoldenVectorTest {
       -311, -503, -295, -359, -231, -71, -231, 329, -183, 25, -151, -295, -103, -295, -103, -55, 73, -39, 89, -103,
       121, -407, 137, -87, 137, 393, 153, -87, 153, 185, 201, 393, 281, -487, 281, 89, 313, -407, 313, -199,
       313, -39, 361, -343, 425, 57, 441, -23, 473, 313, 489, -503, 489, -423, 505, -135
+  };
+
+  private static final int[] MINESHAFT_42 = {
+      -1016, 872, -888, -696, -888, 888, -792, -360, -792, 376, -776, -200, -776, 664, -760, -40, -744, -120, -696, -104,
+      -632, -824, -632, -616, -616, -856, -616, -392, -616, 1016, -584, -120, -584, 184, -552, -360, -536, 8, -536, 808,
+      -472, -504, -392, -664, -328, 152, -264, -520, -232, 776, -200, 888, -184, -632, -184, 648, -168, 456, -120, 632,
+      -104, -456, -104, 632, -88, -856, -72, -840, -40, -264, 8, -264, 24, -776, 56, 280, 72, 8, 88, 856,
+      104, 872, 120, -616, 120, 472, 136, -616, 216, -872, 280, 536, 344, -136, 408, 680, 520, -616, 520, 632,
+      568, 376, 600, -168, 600, 136, 632, -1000, 632, 408, 632, 872, 648, -760, 648, 632, 712, 8, 776, 56,
+      792, -648, 792, 216, 840, -712, 904, -872, 904, 712
+  };
+
+  private static final int[] MINESHAFT_69420 = {
+      -1016, -600, -952, 8, -904, 504, -872, 8, -840, -424, -840, 104, -808, -216, -776, 744, -744, -600, -744, -568,
+      -728, 1000, -712, -136, -520, -744, -504, 360, -344, 744, -328, -984, -280, -312, -280, 520, -264, -952, -264, 216,
+      -216, -616, -184, 248, -104, -56, -104, 424, -88, 712, 8, -392, 104, -696, 120, 72, 200, -232, 232, 632,
+      280, -200, 344, 1000, 360, -728, 360, 264, 440, 520, 520, -344, 536, -856, 536, 760, 568, 760, 616, -312,
+      728, 152, 744, -984, 760, 584, 760, 968, 792, -728, 824, 232, 856, -88, 856, 440
+  };
+
+  private static final int[] MINESHAFT_NEG3849722879 = {
+      -1000, 184, -984, -248, -984, 184, -952, 424, -936, -680, -872, -456, -856, 312, -840, -616, -840, 1016, -824, -392,
+      -792, -856, -792, -504, -776, 1000, -712, 232, -664, -776, -648, 664, -632, -392, -616, -216, -520, -840, -440, -616,
+      -440, -24, -392, -504, -376, -1000, -376, 1016, -360, -664, -360, 408, -344, -760, -328, -632, -328, 248, -312, 760,
+      -280, -568, -280, 424, -216, 648, -200, 40, -152, -296, 168, 312, 296, -728, 296, -408, 296, 744, 328, -744,
+      328, -568, 376, -424, 376, 680, 392, -1000, 424, 1016, 456, 632, 504, 408, 520, 280, 520, 952, 536, 856,
+      552, -680, 632, 232, 680, 616, 824, 248, 840, 408, 856, 632, 872, -296, 952, 696, 968, 424, 1000, -168,
+      1016, -168
   };
 
 }
