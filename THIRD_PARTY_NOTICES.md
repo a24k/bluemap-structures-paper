@@ -1,5 +1,9 @@
 # Third-party notices
 
+This project itself is licensed under the MIT License — see [LICENSE](LICENSE). This
+file documents the provenance of third-party material and reference data used to build
+it.
+
 ## Marker icons (Mojang client assets, not redistributed)
 
 Since 0.4.0 the marker icons are **generated at runtime** on each server: the plugin
