@@ -35,4 +35,22 @@ jobs:
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" --generate-notes plugin/build/libs/BlueMapStructuresPaper-*.jar
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" --clobber plugin/build/libs/BlueMapStructuresPaper-*.jar
+          else
+            gh release create "$GITHUB_REF_NAME" --generate-notes plugin/build/libs/BlueMapStructuresPaper-*.jar
+          fi
+
+      - name: Publish to Modrinth
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+        run: |
+          if [ -z "$MODRINTH_TOKEN" ]; then
+            echo "MODRINTH_TOKEN not set; skipping Modrinth publish"
+            exit 0
+          fi
+          MODRINTH_CHANGELOG="$(gh release view "$GITHUB_REF_NAME" --json body -q .body)"
+          export MODRINTH_CHANGELOG
+          ./gradlew modrinth --stacktrace

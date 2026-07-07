@@ -1,6 +1,10 @@
 // Paper plugin adapter. paper-api and bluemap-api are NOT resolvable from the
 // sandboxed dev environment — this module compiles in GitHub Actions CI (see CLAUDE.md).
 
+plugins {
+  alias(libs.plugins.minotaur)
+}
+
 repositories {
   mavenCentral()
   maven("https://repo.papermc.io/repository/maven-public/")
@@ -36,4 +40,22 @@ tasks.jar {
     configurations.runtimeClasspath.get().filter { it.name.endsWith(".jar") }.map { zipTree(it) }
   })
   duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+// Publishes the plugin jar to Modrinth; runs in CD (cd.yml) after the GitHub release.
+modrinth {
+  token.set(providers.environmentVariable("MODRINTH_TOKEN"))
+  projectId.set("bluemap-structures-paper")
+  versionNumber.set(project.version.toString())
+  versionType.set("release")
+  uploadFile.set(tasks.jar)
+  gameVersions.addAll(libs.versions.mc.supported.get().split(","))
+  loaders.addAll("paper", "purpur")
+  changelog.set(
+    providers.environmentVariable("MODRINTH_CHANGELOG")
+      .orElse("See https://github.com/a24k/bluemap-structures-paper/releases")
+  )
+  dependencies {
+    optional.project("bluemap")
+  }
 }
