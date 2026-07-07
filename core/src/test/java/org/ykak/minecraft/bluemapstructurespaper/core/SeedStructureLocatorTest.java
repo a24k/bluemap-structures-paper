@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
@@ -296,6 +297,63 @@ class SeedStructureLocatorTest {
       }
     }
     assertEquals(filtered, toSet(found));
+  }
+
+  // ---- per-chunk probability (mineshaft legacy_type_3 carver roll) ------------------------
+
+  @Test
+  void mineshaftMatchesTheHandRolledCarverFormulaForAFewChunks() {
+    // Independently reproduces the legacy_type_3 carver-seed roll (see Placement.ChunkRoll)
+    // for a handful of chunks near the origin, using java.util.Random directly rather than
+    // any shared production helper, then cross-checks against the locator's own output.
+    StructureLayer mineshaft = StructureCatalog.byId("mineshaft").orElseThrow();
+    long worldSeed = 42L;
+
+    Random init = new Random(worldSeed);
+    long a = init.nextLong();
+    long b = init.nextLong();
+
+    Set<Long> found = toSet(SeedStructureLocator.locate(mineshaft, worldSeed, 1024, ALWAYS_VALID));
+    int checked = 0;
+    for (int chunkX = -8; chunkX <= 8; chunkX++) {
+      for (int chunkZ = -8; chunkZ <= 8; chunkZ++) {
+        long carverSeed = ((long) chunkX * a) ^ ((long) chunkZ * b) ^ worldSeed;
+        boolean expected = new Random(carverSeed).nextDouble() < 0.004;
+        boolean actual = found.contains(pack(chunkX * 16 + 8, chunkZ * 16 + 8));
+        assertEquals(expected, actual, "chunk (" + chunkX + "," + chunkZ + ")");
+        checked++;
+      }
+    }
+    assertEquals(17 * 17, checked);
+  }
+
+  @Test
+  void mineshaftPositionsAreChunkCentersInsideTheRequestedArea() {
+    StructureLayer mineshaft = StructureCatalog.byId("mineshaft").orElseThrow();
+    List<FoundStructure> found = SeedStructureLocator.locate(mineshaft, 42L, 1024, ALWAYS_VALID);
+    assertFalse(found.isEmpty());
+    for (FoundStructure f : found) {
+      assertEquals(8, Math.floorMod(f.x(), 16), "x not chunk-center offset: " + f.x());
+      assertEquals(8, Math.floorMod(f.z(), 16), "z not chunk-center offset: " + f.z());
+      assertTrue(Math.abs(f.x()) <= 1024, "x out of radius: " + f.x());
+      assertTrue(Math.abs(f.z()) <= 1024, "z out of radius: " + f.z());
+    }
+  }
+
+  @Test
+  void mineshaftOverlappingAreasProduceTheUnionWithoutDuplicates() {
+    StructureLayer mineshaft = StructureCatalog.byId("mineshaft").orElseThrow();
+    SearchArea a = new SearchArea(0, 0, 400);
+    SearchArea b = new SearchArea(200, 200, 400);
+
+    List<FoundStructure> combined =
+        SeedStructureLocator.locate(mineshaft, 42L, List.of(a, b), ALWAYS_VALID);
+    Set<Long> union = toSet(SeedStructureLocator.locate(mineshaft, 42L, List.of(a), ALWAYS_VALID));
+    union.addAll(toSet(SeedStructureLocator.locate(mineshaft, 42L, List.of(b), ALWAYS_VALID)));
+
+    assertFalse(combined.isEmpty());
+    assertEquals(combined.size(), toSet(combined).size(), "no duplicate positions");
+    assertEquals(union, toSet(combined));
   }
 
   @Test

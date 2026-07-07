@@ -59,4 +59,9 @@ layers:
   # place thousands of markers, which can slow the BlueMap web app. It stays
   # zoom-gated when enabled; use smaller search areas if the web app feels sluggish.
   buried_treasure: false
+  # Mineshafts spawn on a per-chunk roll (~0.004 probability per chunk). Like buried
+  # treasure, scanning is cheap but marker count is not — at radius 5000 this can place
+  # 1500+ markers, which can slow the BlueMap web app. Opt-in, and zoom-gated when
+  # enabled; use smaller search areas if the web app feels sluggish.
+  mineshaft: false
   stronghold: true

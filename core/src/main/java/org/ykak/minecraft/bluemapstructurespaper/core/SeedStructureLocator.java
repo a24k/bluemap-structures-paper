@@ -65,6 +65,8 @@ public final class SeedStructureLocator {
    * buried treasure, whose vanilla placement offset is {@code chunkX*16+9, chunkZ*16+9}.
    * Results are duplicate-free even when areas overlap. Stronghold rings stay anchored at
    * (0,0) by vanilla definition — areas only filter which ring positions are reported.
+   * Mineshafts have no fixed anchor point within their chunk, so they use the chunk-center
+   * offset like grid layers.
    */
   public static List<FoundStructure> locate(
       StructureLayer layer, long worldSeed, List<SearchArea> areas, BiomeCheck check) {
@@ -241,7 +243,7 @@ public final class SeedStructureLocator {
     return results;
   }
 
-  // ---- Per-chunk probability (buried treasure) ----------------------------------------
+  // ---- Per-chunk probability (buried treasure, mineshaft) ------------------------------
 
   private static List<FoundStructure> locatePerChunk(
       StructureLayer layer,
@@ -252,6 +254,17 @@ public final class SeedStructureLocator {
     List<FoundStructure> results = new ArrayList<>();
     Set<Long> seen = new HashSet<>();
     String key = layer.structureKeys().get(0);
+    boolean legacyType3 = perChunk.roll() == Placement.ChunkRoll.LEGACY_TYPE_3;
+    int blockOffset = legacyType3 ? 8 : 9;
+
+    // legacy_type_3's carver-seed multipliers depend only on the world seed.
+    long multA = 0;
+    long multB = 0;
+    if (legacyType3) {
+      Random carverInit = new Random(worldSeed);
+      multA = carverInit.nextLong();
+      multB = carverInit.nextLong();
+    }
 
     for (SearchArea area : areas) {
       int chunkMinX = Math.floorDiv(area.minBlockX(), 16);
@@ -260,13 +273,20 @@ public final class SeedStructureLocator {
       int chunkMaxZ = Math.floorDiv(area.maxBlockZ(), 16);
       for (int chunkX = chunkMinX; chunkX <= chunkMaxX; chunkX++) {
         for (int chunkZ = chunkMinZ; chunkZ <= chunkMaxZ; chunkZ++) {
-          long seed =
-              (long) chunkX * REGION_X_MULTIPLIER
-                  + (long) chunkZ * REGION_Z_MULTIPLIER
-                  + worldSeed
-                  + perChunk.salt();
-          if (new Random(seed).nextFloat() < perChunk.probability()) {
-            addCandidate(results, seen, key, chunkX, chunkZ, 9, areas, layer, check);
+          boolean generates;
+          if (legacyType3) {
+            long carverSeed = (multA * (long) chunkX) ^ (multB * (long) chunkZ) ^ worldSeed;
+            generates = new Random(carverSeed).nextDouble() < perChunk.probability();
+          } else {
+            long seed =
+                (long) chunkX * REGION_X_MULTIPLIER
+                    + (long) chunkZ * REGION_Z_MULTIPLIER
+                    + worldSeed
+                    + perChunk.salt();
+            generates = new Random(seed).nextFloat() < perChunk.probability();
+          }
+          if (generates) {
+            addCandidate(results, seen, key, chunkX, chunkZ, blockOffset, areas, layer, check);
           }
         }
       }

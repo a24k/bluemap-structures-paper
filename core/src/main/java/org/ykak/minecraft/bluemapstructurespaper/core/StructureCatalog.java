@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * The 20 supported structure layers. Spacing/separation/salt/spread values are cross-checked
+ * The 21 supported structure layers. Spacing/separation/salt/spread values are cross-checked
  * against cubiomes ({@code finders.c}, MIT — {@code getStructureConfig}) as of the 1.21+ line;
  * re-verify here if a Minecraft update touches structure placement. cubiomes stores {@code
  * chunkRange = spacing - separation} directly, so separation below is derived as {@code
@@ -22,6 +22,12 @@ import java.util.Optional;
  * against the villages structure set come from vanilla's structure-set data (and the 1.14
  * {@code legacy_type_1} code it preserves), which cubiomes models in {@code
  * isViableStructurePos}, not {@code getStructureConfig}.
+ *
+ * <p>{@code mineshaft} uses a per-chunk {@code legacy_type_3} roll (spacing 1 / separation 0
+ * degenerates to an independent roll per chunk), cross-checked against cubiomes {@code
+ * getMineshafts} (the MC 1.13+ carver-seed branch). Its structure-set salt (0) is not mixed
+ * into that method's seeding at all — a vanilla quirk, not an approximation; see
+ * {@link Placement.ChunkRoll#LEGACY_TYPE_3}.
  */
 public final class StructureCatalog {
 
@@ -228,10 +234,21 @@ public final class StructureCatalog {
               "buried_treasure",
               "Buried Treasure",
               Dimension.OVERWORLD,
-              new Placement.PerChunkProbability(10387320L, 0.01),
+              new Placement.PerChunkProbability(
+                  10387320L, 0.01, Placement.ChunkRoll.LEGACY_TYPE_2),
               List.of("minecraft:buried_treasure"),
               List.of("has_structure/buried_treasure"),
               ZOOMED_IN,
+              false),
+          new StructureLayer(
+              "mineshaft",
+              "Mineshafts",
+              Dimension.OVERWORLD,
+              new Placement.PerChunkProbability(0L, 0.004, Placement.ChunkRoll.LEGACY_TYPE_3),
+              List.of("minecraft:mineshaft", "minecraft:mineshaft_mesa"),
+              List.of("has_structure/mineshaft", "has_structure/mineshaft_mesa"),
+              ZOOMED_IN,
+              // opt-in: ~0.4% of chunks ≈ 1500+ markers at the default radius 5000
               false),
           new StructureLayer(
               "stronghold",
