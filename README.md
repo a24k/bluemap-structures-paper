@@ -105,3 +105,9 @@ chunks per candidate cell and stall the server (see issue #3). See
 - [BlueMapStructures](https://github.com/TechnicJelle/BlueMapStructures) — Paper-based
   alternative that reads *generated* chunks from disk instead of predicting from the
   seed.
+
+## License
+
+MIT — see [LICENSE](LICENSE). Third-party provenance (reference data from
+mc-bluemap-structures, runtime-generated icons from Mojang client assets, seed-math
+provenance) is documented in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
